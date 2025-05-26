@@ -192,7 +192,7 @@ func registerDivideTool(server *server.Server) {
 }
 
 // registerPowerTool registers the exponentiation tool
-func registerPowerTool(server *mcp.Server) {
+func registerPowerTool(server *server.Server) {
 	tool := mcp.NewTool(
 		"power",
 		"Raise a number to a power",
@@ -233,7 +233,7 @@ func registerPowerTool(server *mcp.Server) {
 }
 
 // registerSqrtTool registers the square root tool
-func registerSqrtTool(server *mcp.Server) {
+func registerSqrtTool(server *server.Server) {
 	tool := mcp.NewTool(
 		"sqrt",
 		"Calculate the square root of a number",

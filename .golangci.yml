@@ -1,5 +1,5 @@
-# Configuration version
-version: "1"
+# Configuration version for golangci-lint v1.x
+# Remove this line for v2.x compatibility
 
 run:
   timeout: 5m
