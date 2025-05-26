@@ -9,7 +9,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io/fs"
@@ -442,9 +441,8 @@ func registerFileResource(server *server.Server, config *Config) {
 
 		return []protocol.Content{
 			{
-				Type:     "text",
-				Text:     string(content),
-				MimeType: mimeType,
+				Type: "text",
+				Text: string(content),
 			},
 		}, nil
 	})
