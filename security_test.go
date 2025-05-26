@@ -78,7 +78,15 @@ func TestPathTraversalProtection(t *testing.T) {
 			_ = filepath.Clean(p.input)
 			
 			// Check for path traversal attempts
-			if strings.Contains(p.input, "..") || strings.Contains(p.input, "\x00") {
+			// Also check for URL-encoded dots (%2e)
+			decoded := p.input
+			if strings.Contains(p.input, "%") {
+				// Simple URL decoding for test
+				decoded = strings.ReplaceAll(decoded, "%2e", ".")
+				decoded = strings.ReplaceAll(decoded, "%2f", "/")
+			}
+			
+			if strings.Contains(decoded, "..") || strings.Contains(p.input, "\x00") {
 				if !p.blocked {
 					t.Errorf("path traversal not blocked: %s", p.input)
 				}
