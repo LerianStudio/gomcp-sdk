@@ -17,7 +17,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/fredcamaral/gomcp-sdk"
+	mcp "github.com/fredcamaral/gomcp-sdk"
+	"github.com/fredcamaral/gomcp-sdk/server"
 	"github.com/fredcamaral/gomcp-sdk/transport"
 )
 
@@ -46,15 +47,19 @@ func main() {
 		cancel()
 	}()
 
-	// Start the server with stdio transport
+	// Create stdio transport
+	stdioTransport := transport.NewStdioTransport()
+	server.SetTransport(stdioTransport)
+	
+	// Start the server
 	log.Println("Calculator MCP server starting...")
-	if err := server.Start(ctx, transport.Stdio()); err != nil {
+	if err := server.Start(ctx); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
 }
 
 // registerAddTool registers the addition tool
-func registerAddTool(server *mcp.Server) {
+func registerAddTool(server *server.Server) {
 	tool := mcp.NewTool(
 		"add",
 		"Add two numbers",
@@ -86,7 +91,7 @@ func registerAddTool(server *mcp.Server) {
 }
 
 // registerSubtractTool registers the subtraction tool
-func registerSubtractTool(server *mcp.Server) {
+func registerSubtractTool(server *server.Server) {
 	tool := mcp.NewTool(
 		"subtract",
 		"Subtract two numbers",
@@ -118,7 +123,7 @@ func registerSubtractTool(server *mcp.Server) {
 }
 
 // registerMultiplyTool registers the multiplication tool
-func registerMultiplyTool(server *mcp.Server) {
+func registerMultiplyTool(server *server.Server) {
 	tool := mcp.NewTool(
 		"multiply",
 		"Multiply two numbers",
@@ -150,7 +155,7 @@ func registerMultiplyTool(server *mcp.Server) {
 }
 
 // registerDivideTool registers the division tool with error handling
-func registerDivideTool(server *mcp.Server) {
+func registerDivideTool(server *server.Server) {
 	tool := mcp.NewTool(
 		"divide",
 		"Divide two numbers",

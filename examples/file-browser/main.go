@@ -9,6 +9,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io/fs"
@@ -18,8 +19,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fredcamaral/gomcp-sdk"
+	mcp "github.com/fredcamaral/gomcp-sdk"
 	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"github.com/fredcamaral/gomcp-sdk/server"
 	"github.com/fredcamaral/gomcp-sdk/transport"
 )
 
@@ -62,16 +64,20 @@ func main() {
 	// Register resources
 	registerFileResource(server, config)
 
+	// Create stdio transport
+	stdioTransport := transport.NewStdioTransport()
+	server.SetTransport(stdioTransport)
+	
 	// Start server
 	ctx := context.Background()
 	log.Println("File Browser MCP server starting...")
-	if err := server.Start(ctx, transport.Stdio()); err != nil {
+	if err := server.Start(ctx); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
 }
 
 // registerListTool lists files in a directory
-func registerListTool(server *mcp.Server, config *Config) {
+func registerListTool(server *server.Server, config *Config) {
 	tool := mcp.NewTool(
 		"list_files",
 		"List files in a directory",
@@ -151,7 +157,7 @@ func registerListTool(server *mcp.Server, config *Config) {
 }
 
 // registerReadTool reads file contents
-func registerReadTool(server *mcp.Server, config *Config) {
+func registerReadTool(server *server.Server, config *Config) {
 	tool := mcp.NewTool(
 		"read_file",
 		"Read the contents of a file",
@@ -207,7 +213,7 @@ func registerReadTool(server *mcp.Server, config *Config) {
 }
 
 // registerSearchTool searches for files containing text
-func registerSearchTool(server *mcp.Server, config *Config) {
+func registerSearchTool(server *server.Server, config *Config) {
 	tool := mcp.NewTool(
 		"search_files",
 		"Search for files containing specific text",
@@ -328,7 +334,7 @@ func registerSearchTool(server *mcp.Server, config *Config) {
 }
 
 // registerInfoTool gets detailed file information
-func registerInfoTool(server *mcp.Server, config *Config) {
+func registerInfoTool(server *server.Server, config *Config) {
 	tool := mcp.NewTool(
 		"file_info",
 		"Get detailed information about a file or directory",
@@ -389,7 +395,7 @@ func registerInfoTool(server *mcp.Server, config *Config) {
 }
 
 // registerFileResource registers file access as a resource
-func registerFileResource(server *mcp.Server, config *Config) {
+func registerFileResource(server *server.Server, config *Config) {
 	resource := mcp.NewResource(
 		"file:///{path}",
 		"Local Files",
