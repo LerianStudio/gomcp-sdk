@@ -56,7 +56,7 @@ func (ts *TestServer) Start() error {
 	}()
 	
 	// Give server time to start
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	
 	return nil
 }

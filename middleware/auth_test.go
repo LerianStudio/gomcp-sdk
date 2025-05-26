@@ -230,6 +230,7 @@ func TestJWTValidation(t *testing.T) {
 		claims := jwt.MapClaims{
 			"sub": "user123",
 			"iss": "test-issuer",
+			"aud": "aud1",
 			"exp": time.Now().Add(1 * time.Hour).Unix(),
 		}
 		
@@ -252,6 +253,7 @@ func TestJWTValidation(t *testing.T) {
 	t.Run("valid audience (string)", func(t *testing.T) {
 		claims := jwt.MapClaims{
 			"sub": "user123",
+			"iss": "test-issuer",
 			"aud": "aud1",
 			"exp": time.Now().Add(1 * time.Hour).Unix(),
 		}
@@ -263,6 +265,7 @@ func TestJWTValidation(t *testing.T) {
 	t.Run("valid audience (array)", func(t *testing.T) {
 		claims := jwt.MapClaims{
 			"sub": "user123",
+			"iss": "test-issuer",
 			"aud": []interface{}{"aud1", "aud3"},
 			"exp": time.Now().Add(1 * time.Hour).Unix(),
 		}
@@ -274,6 +277,7 @@ func TestJWTValidation(t *testing.T) {
 	t.Run("invalid audience", func(t *testing.T) {
 		claims := jwt.MapClaims{
 			"sub": "user123",
+			"iss": "test-issuer",
 			"aud": "wrong-audience",
 			"exp": time.Now().Add(1 * time.Hour).Unix(),
 		}
@@ -286,6 +290,7 @@ func TestJWTValidation(t *testing.T) {
 	t.Run("missing audience", func(t *testing.T) {
 		claims := jwt.MapClaims{
 			"sub": "user123",
+			"iss": "test-issuer",
 			"exp": time.Now().Add(1 * time.Hour).Unix(),
 		}
 		

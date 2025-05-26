@@ -2,6 +2,8 @@ package testutil
 
 import (
 	"context"
+	"fmt"
+	"time"
 	"github.com/fredcamaral/gomcp-sdk/protocol"
 	"github.com/fredcamaral/gomcp-sdk/server"
 )
@@ -77,7 +79,11 @@ func (b *ServerBuilder) WithAutoStart() *ServerBuilder {
 // Build builds and optionally starts the test server
 func (b *ServerBuilder) Build() *TestServer {
 	if b.autoStart {
-		b.server.Start()
+		if err := b.server.Start(); err != nil {
+			panic(fmt.Sprintf("failed to start test server: %v", err))
+		}
+		// Wait a bit more for server to be ready
+		time.Sleep(50 * time.Millisecond)
 	}
 	return b.server
 }

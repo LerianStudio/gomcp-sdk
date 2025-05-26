@@ -109,18 +109,13 @@ func NewAuthMiddleware(config *AuthConfig) *AuthMiddleware {
 
 // Process implements the Middleware interface
 func (m *AuthMiddleware) Process(ctx context.Context, request interface{}, next func(context.Context, interface{}) (interface{}, error)) (interface{}, error) {
-	// Extract authentication information from context
-	authHeader := m.extractAuthHeader(ctx)
-	
-	if authHeader == "" && m.config.RequireAuth {
-		m.config.Logger.WarnContext(ctx, "missing authentication header")
-		return nil, ErrMissingAuthHeader
-	}
-	
 	// Try different authentication methods
 	var user *User
 	var authMethod AuthMethod
 	var err error
+	
+	// Extract authentication information from context
+	authHeader := m.extractAuthHeader(ctx)
 	
 	// Try JWT authentication
 	if m.isMethodAllowed(AuthMethodJWT) && strings.HasPrefix(authHeader, "Bearer ") {
@@ -143,6 +138,11 @@ func (m *AuthMiddleware) Process(ctx context.Context, request interface{}, next 
 	
 	// Check if authentication was successful
 	if user == nil && m.config.RequireAuth {
+		// Determine the appropriate error
+		if authHeader == "" && m.extractAPIKey(ctx) == "" {
+			m.config.Logger.WarnContext(ctx, "missing authentication header")
+			return nil, ErrMissingAuthHeader
+		}
 		m.config.Logger.WarnContext(ctx, "authentication failed", "error", err)
 		return nil, ErrUnauthorized
 	}
