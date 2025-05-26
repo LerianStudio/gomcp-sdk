@@ -108,6 +108,7 @@ jobs:
       run: go build -v ./...
 
     - name: Build examples
+      shell: bash
       run: |
         cd examples
         for dir in */; do
@@ -120,6 +121,7 @@ jobs:
         done
 
     - name: Build tools
+      shell: bash
       run: |
         cd tools
         for dir in */; do

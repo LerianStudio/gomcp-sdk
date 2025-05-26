@@ -93,7 +93,7 @@ func TestHTTPTransport_HandleRequest(t *testing.T) {
 	defer transport.Stop()
 
 	// Get actual address
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr
 
 	tests := []struct {
@@ -176,7 +176,7 @@ func TestHTTPTransport_ErrorHandling(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr
 
 	client := &http.Client{Timeout: 5 * time.Second}
@@ -256,7 +256,7 @@ func TestHTTPTransport_CORS(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr
 
 	client := &http.Client{Timeout: 5 * time.Second}
@@ -335,7 +335,7 @@ func TestHTTPTransport_CustomHeaders(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	req := &protocol.JSONRPCRequest{
@@ -376,7 +376,7 @@ func TestHTTPTransport_RecoveryMiddleware(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	req := &protocol.JSONRPCRequest{
@@ -445,7 +445,7 @@ func BenchmarkHTTPTransport_HandleRequest(b *testing.B) {
 	require.NoError(b, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	client := &http.Client{
 		Timeout: 5 * time.Second,
 		Transport: &http.Transport{

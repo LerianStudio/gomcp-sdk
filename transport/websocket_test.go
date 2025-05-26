@@ -73,7 +73,7 @@ func TestWebSocketTransport_Connection(t *testing.T) {
 	defer transport.Stop()
 
 	// Get actual address
-	addr := transport.server.Addr
+	addr := transport.Address()
 	
 	// Connect WebSocket client
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/ws"}
@@ -130,7 +130,7 @@ func TestWebSocketTransport_MultipleConnections(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	
 	// Connect multiple clients
 	numClients := 5
@@ -190,7 +190,7 @@ func TestWebSocketTransport_ErrorHandling(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	
 	// Connect client
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/ws"}
@@ -279,7 +279,7 @@ func TestWebSocketTransport_Compression(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	
 	// Connect with compression enabled
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/ws"}
@@ -328,7 +328,7 @@ func TestWebSocketTransport_PingPong(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	
 	// Connect client
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/ws"}
@@ -387,7 +387,7 @@ func TestWebSocketTransport_CheckOrigin(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/ws"}
 
 	tests := []struct {
@@ -446,7 +446,7 @@ func BenchmarkWebSocketTransport_SingleConnection(b *testing.B) {
 	require.NoError(b, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/ws"}
 	
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
@@ -492,7 +492,7 @@ func BenchmarkWebSocketTransport_Broadcast(b *testing.B) {
 	require.NoError(b, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	
 	// Connect multiple clients
 	numClients := 10
