@@ -24,7 +24,6 @@ import (
 func main() {
 	// Create a new MCP server
 	server := mcp.NewServer("calculator", "1.0.0")
-	server.SetDescription("A simple calculator MCP server")
 
 	// Register arithmetic operation tools
 	registerAddTool(server)

@@ -156,9 +156,9 @@ func (s *APIGatewayServer) registerTool(toolName, apiName string, apiConfig APIC
 	}
 
 	// Create tool handler
-	handler := func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
+	handler := protocol.ToolHandlerFunc(func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 		return s.handleAPICall(ctx, apiName, apiConfig, endpoint, params)
-	}
+	})
 
 	// Register the tool
 	s.AddTool(protocol.Tool{

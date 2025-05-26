@@ -59,7 +59,6 @@ import (
 // Example:
 //
 //	server := mcp.NewServer("file-manager", "1.0.0")
-//	server.SetDescription("A file management MCP server")
 func NewServer(name, version string) *server.Server {
 	return server.NewServer(name, version)
 }

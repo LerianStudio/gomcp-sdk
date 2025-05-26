@@ -52,7 +52,6 @@ func main() {
 
 	// Create server
 	server := mcp.NewServer("file-browser", "1.0.0")
-	server.SetDescription("A secure file browser MCP server")
 
 	// Register tools
 	registerListTool(server, config)
