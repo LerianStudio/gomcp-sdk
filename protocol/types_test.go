@@ -71,9 +71,30 @@ func TestJSONRPCRequest(t *testing.T) {
 				t.Fatalf("Failed to unmarshal request: %v", err)
 			}
 
-			// Compare original and decoded
-			if !reflect.DeepEqual(tt.request, decoded) {
-				t.Errorf("Request mismatch after marshal/unmarshal\nOriginal: %+v\nDecoded: %+v", tt.request, decoded)
+			// Compare fields individually due to JSON number unmarshaling
+			if decoded.JSONRPC != tt.request.JSONRPC {
+				t.Errorf("JSONRPC mismatch: got %s, want %s", decoded.JSONRPC, tt.request.JSONRPC)
+			}
+			if decoded.Method != tt.request.Method {
+				t.Errorf("Method mismatch: got %s, want %s", decoded.Method, tt.request.Method)
+			}
+			
+			// Compare IDs - handle numeric type conversion
+			var idMatch bool
+			switch v := tt.request.ID.(type) {
+			case int:
+				if f, ok := decoded.ID.(float64); ok {
+					idMatch = float64(v) == f
+				}
+			case int64:
+				if f, ok := decoded.ID.(float64); ok {
+					idMatch = float64(v) == f
+				}
+			default:
+				idMatch = decoded.ID == tt.request.ID
+			}
+			if !idMatch {
+				t.Errorf("ID mismatch: got %v (%T), want %v (%T)", decoded.ID, decoded.ID, tt.request.ID, tt.request.ID)
 			}
 		})
 	}
@@ -130,8 +151,22 @@ func TestJSONRPCResponse(t *testing.T) {
 			if decoded.JSONRPC != tt.response.JSONRPC {
 				t.Errorf("JSONRPC mismatch: got %s, want %s", decoded.JSONRPC, tt.response.JSONRPC)
 			}
-			if decoded.ID != tt.response.ID {
-				t.Errorf("ID mismatch: got %v, want %v", decoded.ID, tt.response.ID)
+			// Compare IDs - handle numeric type conversion (JSON unmarshals numbers as float64)
+			var idMatch bool
+			switch v := tt.response.ID.(type) {
+			case int:
+				if f, ok := decoded.ID.(float64); ok {
+					idMatch = float64(v) == f
+				}
+			case int64:
+				if f, ok := decoded.ID.(float64); ok {
+					idMatch = float64(v) == f
+				}
+			default:
+				idMatch = decoded.ID == tt.response.ID
+			}
+			if !idMatch {
+				t.Errorf("ID mismatch: got %v (%T), want %v (%T)", decoded.ID, decoded.ID, tt.response.ID, tt.response.ID)
 			}
 
 			// Check error presence

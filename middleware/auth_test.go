@@ -337,7 +337,11 @@ func TestGenerateJWT(t *testing.T) {
 	assert.Equal(t, user.Username, claims["username"])
 	assert.Equal(t, user.Email, claims["email"])
 	assert.Equal(t, config.JWTIssuer, claims["iss"])
-	assert.Equal(t, config.JWTAudience, claims["aud"])
+	// JWT audience is encoded as []interface{} when parsed
+	audClaim, ok := claims["aud"].([]interface{})
+	require.True(t, ok)
+	assert.Len(t, audClaim, 1)
+	assert.Equal(t, config.JWTAudience[0], audClaim[0])
 	assert.Equal(t, "value", claims["custom"])
 	
 	// Verify expiration
