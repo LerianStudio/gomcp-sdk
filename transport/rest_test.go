@@ -96,7 +96,7 @@ func TestRESTTransport_ToolsEndpoint(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr + "/api/v1"
 	client := &http.Client{Timeout: 5 * time.Second}
 
@@ -208,7 +208,7 @@ func TestRESTTransport_ResourcesEndpoint(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr + "/api/v1"
 	client := &http.Client{Timeout: 5 * time.Second}
 
@@ -267,7 +267,7 @@ func TestRESTTransport_Authentication(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr + "/api/v1"
 	client := &http.Client{Timeout: 5 * time.Second}
 
@@ -329,7 +329,7 @@ func TestRESTTransport_RateLimiting(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr + "/api/v1"
 	client := &http.Client{Timeout: 5 * time.Second}
 
@@ -397,7 +397,7 @@ func TestRESTTransport_ErrorMapping(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr + "/api/v1"
 	client := &http.Client{Timeout: 5 * time.Second}
 
@@ -449,7 +449,7 @@ func TestRESTTransport_HealthEndpoint(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr + "/api/v1"
 	client := &http.Client{Timeout: 5 * time.Second}
 
@@ -486,7 +486,7 @@ func TestRESTTransport_OpenAPIDocumentation(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr + "/api/v1"
 	client := &http.Client{Timeout: 5 * time.Second}
 
@@ -549,7 +549,7 @@ func BenchmarkRESTTransport_ToolCall(b *testing.B) {
 	require.NoError(b, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr + "/api/v1"
 	
 	client := &http.Client{

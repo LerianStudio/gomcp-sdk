@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -85,8 +86,14 @@ func (t *RESTTransport) Start(ctx context.Context, handler RequestHandler) error
 		mux.HandleFunc(t.restConfig.APIPrefix+"/openapi.json", t.handleOpenAPISpec)
 	}
 
+	// Create listener first to get the actual port
+	listener, err := net.Listen("tcp", t.config.Address)
+	if err != nil {
+		return fmt.Errorf("failed to create listener: %w", err)
+	}
+	t.listener = listener
+
 	t.server = &http.Server{
-		Addr:         t.config.Address,
 		Handler:      t.wrapWithRESTMiddleware(mux),
 		ReadTimeout:  t.config.ReadTimeout,
 		WriteTimeout: t.config.WriteTimeout,
@@ -100,9 +107,9 @@ func (t *RESTTransport) Start(ctx context.Context, handler RequestHandler) error
 	go func() {
 		var err error
 		if t.certFile != "" && t.keyFile != "" {
-			err = t.server.ListenAndServeTLS(t.certFile, t.keyFile)
+			err = t.server.ServeTLS(t.listener, t.certFile, t.keyFile)
 		} else {
-			err = t.server.ListenAndServe()
+			err = t.server.Serve(t.listener)
 		}
 		if err != nil && err != http.ErrServerClosed {
 			t.mu.Lock()

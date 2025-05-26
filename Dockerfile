@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
@@ -13,22 +13,21 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build examples
-RUN go build -o /bin/echo-server ./examples/echo-server
-RUN go build -o /bin/calculator ./examples/calculator
-RUN go build -o /bin/file-manager ./examples/file-manager
-RUN go build -o /bin/weather-service ./examples/weather-service
+# Build the main library (verification build)
+RUN go build -v ./...
+
+# Build tools using the main module
+RUN go build -o /bin/mcp-validator ./tools/mcp-validator/main.go
+RUN go build -o /bin/mcp-benchmark ./tools/mcp-benchmark/main.go
 
 # Runtime stage
 FROM alpine:latest
 
 RUN apk add --no-cache ca-certificates
 
-# Copy binaries
-COPY --from=builder /bin/echo-server /bin/echo-server
-COPY --from=builder /bin/calculator /bin/calculator
-COPY --from=builder /bin/file-manager /bin/file-manager
-COPY --from=builder /bin/weather-service /bin/weather-service
+# Copy tool binaries
+COPY --from=builder /bin/mcp-validator /bin/mcp-validator
+COPY --from=builder /bin/mcp-benchmark /bin/mcp-benchmark
 
-# Default to echo server
-CMD ["/bin/echo-server"]
+# Default to validator
+CMD ["/bin/mcp-validator"]

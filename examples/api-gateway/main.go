@@ -68,7 +68,7 @@ type CacheEntry struct {
 
 // APIGatewayServer implements an MCP server that proxies to external APIs
 type APIGatewayServer struct {
-	*server.MCPServer
+	*server.Server
 	config       Config
 	httpClient   *http.Client
 	rateLimiters map[string]*rate.Limiter
@@ -79,7 +79,7 @@ type APIGatewayServer struct {
 // NewAPIGatewayServer creates a new API gateway server
 func NewAPIGatewayServer() *APIGatewayServer {
 	s := &APIGatewayServer{
-		MCPServer:    server.NewMCPServer("api-gateway", "1.0.0"),
+		Server:       server.NewServer("api-gateway", "1.0.0"),
 		httpClient:   &http.Client{Timeout: 30 * time.Second},
 		rateLimiters: make(map[string]*rate.Limiter),
 		cache:        make(map[string]*CacheEntry),
@@ -161,7 +161,7 @@ func (s *APIGatewayServer) registerTool(toolName, apiName string, apiConfig APIC
 	}
 
 	// Register the tool
-	s.RegisterTool(protocol.Tool{
+	s.AddTool(protocol.Tool{
 		Name:        toolName,
 		Description: endpoint.Description,
 		InputSchema: schema,
@@ -357,9 +357,12 @@ func main() {
 	// Create stdio transport
 	stdioTransport := transport.NewStdioTransport()
 
+	// Set transport
+	server.SetTransport(stdioTransport)
+
 	// Start server
 	log.Println("Starting API Gateway MCP Server...")
-	if err := server.Serve(stdioTransport); err != nil {
+	if err := server.Start(context.Background()); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
 }

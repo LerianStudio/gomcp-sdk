@@ -124,7 +124,7 @@ func TestSSETransport_Connection(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr
 
 	// Connect SSE client
@@ -176,7 +176,7 @@ func TestSSETransport_Broadcast(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr
 
 	// Connect multiple clients
@@ -237,7 +237,7 @@ func TestSSETransport_SendToClient(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr
 
 	// Connect client and get client ID
@@ -308,7 +308,7 @@ func TestSSETransport_CommandEndpoint(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr
 
 	httpClient := &http.Client{Timeout: 5 * time.Second}
@@ -397,7 +397,7 @@ func TestSSETransport_MaxClients(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr + "/events"
 
 	client := &http.Client{Timeout: 5 * time.Second}
@@ -452,7 +452,7 @@ func TestSSETransport_Heartbeat(t *testing.T) {
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr + "/events"
 
 	req, _ := http.NewRequest("GET", baseURL, nil)
@@ -510,7 +510,7 @@ func TestSSETransport_EventBuffering(t *testing.T) {
 	require.Empty(t, clients) // No clients yet
 
 	// Connect a client
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr + "/events"
 
 	go func() {
@@ -560,7 +560,7 @@ func BenchmarkSSETransport_Broadcast(b *testing.B) {
 	require.NoError(b, err)
 	defer transport.Stop()
 
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr + "/events"
 
 	// Connect multiple clients
@@ -609,7 +609,7 @@ func BenchmarkSSETransport_DirectMessage(b *testing.B) {
 	defer transport.Stop()
 
 	// Connect a client and get its ID
-	addr := transport.server.Addr
+	addr := transport.Address()
 	baseURL := "http://" + addr + "/events"
 
 	clientConnected := make(chan string)

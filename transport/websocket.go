@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -50,6 +51,7 @@ type WebSocketConfig struct {
 type WebSocketTransport struct {
 	config   *WebSocketConfig
 	server   *http.Server
+	listener net.Listener
 	upgrader *websocket.Upgrader
 	handler  RequestHandler
 	mu       sync.RWMutex
@@ -133,8 +135,14 @@ func (t *WebSocketTransport) Start(ctx context.Context, handler RequestHandler) 
 	mux := http.NewServeMux()
 	mux.HandleFunc(t.config.Path, t.handleWebSocket)
 
+	// Create listener first to get the actual port
+	listener, err := net.Listen("tcp", t.config.Address)
+	if err != nil {
+		return fmt.Errorf("failed to create listener: %w", err)
+	}
+	t.listener = listener
+
 	t.server = &http.Server{
-		Addr:      t.config.Address,
 		Handler:   mux,
 		TLSConfig: t.config.TLSConfig,
 	}
@@ -145,9 +153,9 @@ func (t *WebSocketTransport) Start(ctx context.Context, handler RequestHandler) 
 	go func() {
 		var err error
 		if t.certFile != "" && t.keyFile != "" {
-			err = t.server.ListenAndServeTLS(t.certFile, t.keyFile)
+			err = t.server.ServeTLS(t.listener, t.certFile, t.keyFile)
 		} else {
-			err = t.server.ListenAndServe()
+			err = t.server.Serve(t.listener)
 		}
 		if err != nil && err != http.ErrServerClosed {
 			t.mu.Lock()
@@ -187,7 +195,11 @@ func (t *WebSocketTransport) Stop() error {
 	if t.server != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		return t.server.Shutdown(ctx)
+		err := t.server.Shutdown(ctx)
+		if t.listener != nil {
+			t.listener.Close()
+		}
+		return err
 	}
 
 	return nil
@@ -319,6 +331,16 @@ func (t *WebSocketTransport) IsRunning() bool {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	return t.running
+}
+
+// Address returns the actual listening address
+func (t *WebSocketTransport) Address() string {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	if t.listener != nil {
+		return t.listener.Addr().String()
+	}
+	return t.config.Address
 }
 
 // ConnectionCount returns the number of active connections

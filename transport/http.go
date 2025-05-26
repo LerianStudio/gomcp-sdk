@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -47,6 +48,7 @@ type HTTPConfig struct {
 type HTTPTransport struct {
 	config   *HTTPConfig
 	server   *http.Server
+	listener net.Listener
 	handler  RequestHandler
 	mu       sync.RWMutex
 	running  bool
@@ -99,8 +101,14 @@ func (t *HTTPTransport) Start(ctx context.Context, handler RequestHandler) error
 	mux := http.NewServeMux()
 	mux.HandleFunc(t.config.Path, t.handleRequest)
 
+	// Create listener first to get the actual port
+	listener, err := net.Listen("tcp", t.config.Address)
+	if err != nil {
+		return fmt.Errorf("failed to create listener: %w", err)
+	}
+	t.listener = listener
+
 	t.server = &http.Server{
-		Addr:         t.config.Address,
 		Handler:      t.wrapWithMiddleware(mux),
 		ReadTimeout:  t.config.ReadTimeout,
 		WriteTimeout: t.config.WriteTimeout,
@@ -114,9 +122,9 @@ func (t *HTTPTransport) Start(ctx context.Context, handler RequestHandler) error
 	go func() {
 		var err error
 		if t.certFile != "" && t.keyFile != "" {
-			err = t.server.ListenAndServeTLS(t.certFile, t.keyFile)
+			err = t.server.ServeTLS(t.listener, t.certFile, t.keyFile)
 		} else {
-			err = t.server.ListenAndServe()
+			err = t.server.Serve(t.listener)
 		}
 		if err != nil && err != http.ErrServerClosed {
 			t.mu.Lock()
@@ -148,7 +156,11 @@ func (t *HTTPTransport) Stop() error {
 	if t.server != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		return t.server.Shutdown(ctx)
+		err := t.server.Shutdown(ctx)
+		if t.listener != nil {
+			t.listener.Close()
+		}
+		return err
 	}
 
 	return nil
@@ -276,4 +288,14 @@ func (t *HTTPTransport) IsRunning() bool {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	return t.running
+}
+
+// Address returns the actual listening address
+func (t *HTTPTransport) Address() string {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	if t.listener != nil {
+		return t.listener.Addr().String()
+	}
+	return t.config.Address
 }

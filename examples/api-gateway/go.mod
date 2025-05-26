@@ -1,4 +1,4 @@
-module mcp-memory/pkg/mcp/examples/api-gateway
+module github.com/fredcamaral/gomcp-sdk/examples/api-gateway
 
 go 1.23.0
 
@@ -13,4 +13,4 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 )
 
-replace mcp-memory/pkg/mcp => ../../
+replace github.com/fredcamaral/gomcp-sdk => ../..

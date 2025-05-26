@@ -17,8 +17,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/yourusername/mcp-go"
-	"github.com/yourusername/mcp-go/transport"
+	"github.com/fredcamaral/gomcp-sdk"
+	"github.com/fredcamaral/gomcp-sdk/transport"
 )
 
 func main() {
