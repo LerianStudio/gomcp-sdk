@@ -133,7 +133,10 @@ func (b *ServerBuilder) WithSimpleTool(name string, result string) *ServerBuilde
 // WithResource adds a resource to the server
 func (b *ServerBuilder) WithResource(uri, name string, content string) *ServerBuilder {
 	handler := ResourceHandlerFunc(func(ctx context.Context, resourceURI string) ([]protocol.Content, error) {
-		return []protocol.Content{protocol.NewContent(content)}, nil
+		return []protocol.Content{{
+			Type: "text",
+			Text: content,
+		}}, nil
 	})
 	
 	b.resources = append(b.resources, resourceConfig{
@@ -150,7 +153,10 @@ func (b *ServerBuilder) WithResource(uri, name string, content string) *ServerBu
 // WithPrompt adds a prompt to the server
 func (b *ServerBuilder) WithPrompt(name string, content string) *ServerBuilder {
 	handler := PromptHandlerFunc(func(ctx context.Context, args map[string]interface{}) ([]protocol.Content, error) {
-		return []protocol.Content{protocol.NewContent(content)}, nil
+		return []protocol.Content{{
+			Type: "text",
+			Text: content,
+		}}, nil
 	})
 	
 	b.prompts = append(b.prompts, promptConfig{
