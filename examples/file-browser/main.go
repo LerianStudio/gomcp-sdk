@@ -423,22 +423,6 @@ func registerFileResource(server *server.Server, config *Config) {
 			return nil, fmt.Errorf("failed to read file: %w", err)
 		}
 
-		// Determine MIME type
-		mimeType := "text/plain"
-		ext := filepath.Ext(fullPath)
-		switch ext {
-		case ".json":
-			mimeType = "application/json"
-		case ".xml":
-			mimeType = "application/xml"
-		case ".html":
-			mimeType = "text/html"
-		case ".md":
-			mimeType = "text/markdown"
-		case ".yaml", ".yml":
-			mimeType = "text/yaml"
-		}
-
 		return []protocol.Content{
 			{
 				Type: "text",
