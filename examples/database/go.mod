@@ -3,10 +3,10 @@ module github.com/fredcamaral/gomcp-sdk/examples/database
 go 1.23.0
 
 require (
-	github.com/fredcamaral/gomcp-sdk v0.0.0
-	github.com/go-sql-driver/mysql v1.9.2
+	github.com/fredcamaral/gomcp-sdk v0.0.0-20250526191326-79829d2481cb
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/lib/pq v1.10.9
-	github.com/mattn/go-sqlite3 v1.14.17
+	github.com/mattn/go-sqlite3 v1.14.22
 )
 
 require (

@@ -2,10 +2,8 @@ module github.com/fredcamaral/gomcp-sdk/examples/api-gateway
 
 go 1.23.0
 
-toolchain go1.24.3
-
 require (
-	github.com/fredcamaral/gomcp-sdk v0.0.0-20250526211649-8299340794c8
+	github.com/fredcamaral/gomcp-sdk v0.0.0-20250526191326-79829d2481cb
 	golang.org/x/time v0.5.0
 	gopkg.in/yaml.v3 v3.0.1
 )
