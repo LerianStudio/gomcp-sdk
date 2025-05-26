@@ -16,9 +16,9 @@ COPY . .
 # Build the main library (verification build)
 RUN go build -v ./...
 
-# Build tools
-RUN go build -o /bin/mcp-validator ./tools/mcp-validator
-RUN go build -o /bin/mcp-benchmark ./tools/mcp-benchmark
+# Build tools using the main module
+RUN go build -o /bin/mcp-validator ./tools/mcp-validator/main.go
+RUN go build -o /bin/mcp-benchmark ./tools/mcp-benchmark/main.go
 
 # Runtime stage
 FROM alpine:latest

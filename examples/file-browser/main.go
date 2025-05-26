@@ -18,9 +18,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourusername/mcp-go"
-	"github.com/yourusername/mcp-go/protocol"
-	"github.com/yourusername/mcp-go/transport"
+	"github.com/fredcamaral/gomcp-sdk"
+	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"github.com/fredcamaral/gomcp-sdk/transport"
 )
 
 const (
