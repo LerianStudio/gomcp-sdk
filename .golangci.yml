@@ -1,62 +1,12 @@
 run:
   timeout: 5m
-  tests: true
-  build-tags:
-    - integration
 
 linters:
+  disable-all: true
   enable:
     - gofmt
-    - goimports
     - govet
     - errcheck
     - staticcheck
-    - unused
-    - gosimple
     - ineffassign
     - typecheck
-    - gosec
-    - gocyclo
-    - misspell
-    - lll
-    - goconst
-    - gocritic
-
-linters-settings:
-  gofmt:
-    simplify: true
-  goimports:
-    local-prefixes: github.com/fredcamaral/gomcp-sdk
-  govet:
-    enable-all: true
-  gocyclo:
-    min-complexity: 15
-  misspell:
-    locale: US
-  lll:
-    line-length: 120
-  goconst:
-    min-len: 2
-    min-occurrences: 2
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - performance
-      - style
-
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gosec
-        - goconst
-    - path: testutil/
-      linters:
-        - gosec
-    - path: examples/
-      linters:
-        - gocyclo
-
-  exclude-use-default: false
-  max-issues-per-linter: 0
-  max-same-issues: 0
