@@ -75,7 +75,7 @@ func TestPathTraversalProtection(t *testing.T) {
 	for _, p := range paths {
 		t.Run(p.input, func(t *testing.T) {
 			// Clean the path
-			cleaned := filepath.Clean(p.input)
+			_ = filepath.Clean(p.input)
 			
 			// Check for path traversal attempts
 			if strings.Contains(p.input, "..") || strings.Contains(p.input, "\x00") {
@@ -96,7 +96,7 @@ func TestRateLimiting(t *testing.T) {
 	// Skip test if it takes too long
 	t.Skip("Rate limiting test disabled for CI")
 	
-	s := server.NewServer()
+	_ = server.NewServer("test", "1.0.0")
 	
 	// Configure aggressive rate limit for testing
 	rateLimiter := &mockRateLimiter{
@@ -130,7 +130,7 @@ func TestRateLimiting(t *testing.T) {
 
 // TestSecureDefaults tests that secure defaults are properly set
 func TestSecureDefaults(t *testing.T) {
-	s := server.NewServer()
+	s := server.NewServer("test", "1.0.0")
 	
 	// Test that server has secure defaults
 	if s == nil {

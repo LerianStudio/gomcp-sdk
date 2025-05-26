@@ -4,7 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
-	"github.com/fredcamaral/gomcp-sdk"
+	
+	mcp "github.com/fredcamaral/gomcp-sdk"
 	"github.com/fredcamaral/gomcp-sdk/protocol"
 	"github.com/fredcamaral/gomcp-sdk/server"
 )
