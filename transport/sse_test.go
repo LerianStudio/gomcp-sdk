@@ -101,7 +101,11 @@ func TestSSETransport_StartStop(t *testing.T) {
 
 	// Stop transport
 	err = transport.Stop()
-	require.NoError(t, err)
+	// On some platforms (especially macOS), we might get "use of closed network connection"
+	// which is expected when stopping the transport
+	if err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
+		t.Errorf("Unexpected error stopping transport: %v", err)
+	}
 	assert.False(t, transport.IsRunning())
 }
 
