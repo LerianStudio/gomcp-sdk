@@ -398,8 +398,8 @@ func TestIsRunning(t *testing.T) {
 		t.Error("Expected transport to not be running initially")
 	}
 
-	// Start transport
-	input := strings.NewReader("")
+	// Start transport with a pipe so it doesn't immediately EOF
+	input, writer := io.Pipe()
 	output := &bytes.Buffer{}
 	transport = NewStdioTransportWithIO(input, output)
 
@@ -408,32 +408,28 @@ func TestIsRunning(t *testing.T) {
 
 	handler := newMockRequestHandler()
 
+	// Write a request after a small delay to keep the transport running
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		// Write a valid JSON-RPC request
+		writer.Write([]byte(`{"jsonrpc":"2.0","id":1,"method":"test"}` + "\n"))
+		// Keep the pipe open for a bit
+		time.Sleep(200 * time.Millisecond)
+		writer.Close()
+	}()
+
 	// Start in background
 	errCh := make(chan error)
-	startedCh := make(chan bool)
 	go func() {
-		// Monitor running state
-		go func() {
-			for i := 0; i < 20; i++ {
-				if transport.IsRunning() {
-					startedCh <- true
-					return
-				}
-				time.Sleep(10 * time.Millisecond)
-			}
-			startedCh <- false
-		}()
 		errCh <- transport.Start(ctx, handler)
 	}()
 
-	// Wait for running state
-	select {
-	case running := <-startedCh:
-		if !running {
-			t.Error("Expected transport to be running")
-		}
-	case <-time.After(500 * time.Millisecond):
-		t.Error("Timeout waiting for transport to start")
+	// Wait for transport to be running
+	time.Sleep(100 * time.Millisecond)
+
+	// Check if running
+	if !transport.IsRunning() {
+		t.Error("Expected transport to be running")
 	}
 
 	// Stop

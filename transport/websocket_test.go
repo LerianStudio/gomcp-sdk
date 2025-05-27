@@ -354,11 +354,14 @@ func TestWebSocketTransport_PingPong(t *testing.T) {
 	require.NoError(t, err)
 	defer conn.Close()
 
-	// Set up pong handler
-	pongReceived := make(chan bool, 1)
-	conn.SetPongHandler(func(string) error {
-		pongReceived <- true
-		return nil
+	// Test server->client ping
+	pingReceived := make(chan bool, 1)
+	
+	// Set a custom ping handler to detect server pings
+	conn.SetPingHandler(func(appData string) error {
+		pingReceived <- true
+		// Send pong response
+		return conn.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(time.Second))
 	})
 
 	// Read messages in background
@@ -371,25 +374,31 @@ func TestWebSocketTransport_PingPong(t *testing.T) {
 		}
 	}()
 
-	// Set up read handler to process pongs
-	go func() {
-		for {
-			_, _, err := conn.ReadMessage()
-			if err != nil {
-				return
-			}
-		}
-	}()
-
-	// Give server time to start sending pings
-	time.Sleep(200 * time.Millisecond)
-
-	// Wait for ping/pong
+	// Wait for server to send a ping
+	select {
+	case <-pingReceived:
+		// Success - server is sending pings
+	case <-time.After(1 * time.Second):
+		t.Fatal("No ping received from server")
+	}
+	
+	// Test client->server ping
+	pongReceived := make(chan bool, 1)
+	conn.SetPongHandler(func(string) error {
+		pongReceived <- true
+		return nil
+	})
+	
+	// Send a ping from client
+	err = conn.WriteControl(websocket.PingMessage, []byte("test"), time.Now().Add(time.Second))
+	require.NoError(t, err)
+	
+	// Server should respond with pong
 	select {
 	case <-pongReceived:
-		// Success - ping/pong working
-	case <-time.After(2 * time.Second):
-		t.Fatal("No pong received")
+		// Success - got pong from server
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("No pong received from server")
 	}
 }
 
