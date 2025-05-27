@@ -360,24 +360,36 @@ func TestRESTTransport_ErrorMapping(t *testing.T) {
 	
 	handler := &mockHandler{
 		handleFunc: func(ctx context.Context, req *protocol.JSONRPCRequest) *protocol.JSONRPCResponse {
-			// Return different error codes based on method
+			// Return different error codes based on tool name
 			var errorCode int
 			var message string
 			
-			switch req.Method {
-			case "tools/parse_error":
-				errorCode = protocol.ParseError
-				message = "Parse error"
-			case "tools/invalid_request":
-				errorCode = protocol.InvalidRequest
-				message = "Invalid request"
-			case "tools/method_not_found":
-				errorCode = protocol.MethodNotFound
-				message = "Method not found"
-			case "tools/invalid_params":
-				errorCode = protocol.InvalidParams
-				message = "Invalid params"
-			default:
+			if req.Method == "tools/call" {
+				params, ok := req.Params.(map[string]interface{})
+				if ok {
+					toolName, _ := params["name"].(string)
+					switch toolName {
+					case "parse_error":
+						errorCode = protocol.ParseError
+						message = "Parse error"
+					case "invalid_request":
+						errorCode = protocol.InvalidRequest
+						message = "Invalid request"
+					case "method_not_found":
+						errorCode = protocol.MethodNotFound
+						message = "Method not found"
+					case "invalid_params":
+						errorCode = protocol.InvalidParams
+						message = "Invalid params"
+					default:
+						errorCode = protocol.InternalError
+						message = "Internal error"
+					}
+				} else {
+					errorCode = protocol.InternalError
+					message = "Internal error"
+				}
+			} else {
 				errorCode = protocol.InternalError
 				message = "Internal error"
 			}

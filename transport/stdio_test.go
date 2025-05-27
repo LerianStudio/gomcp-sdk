@@ -52,6 +52,9 @@ func (h *mockRequestHandler) HandleRequest(ctx context.Context, req *protocol.JS
 	h.mu.Unlock()
 
 	if exists {
+		if resp == nil {
+			return nil
+		}
 		// Copy response and set correct ID
 		respCopy := *resp
 		respCopy.ID = req.ID
@@ -402,17 +405,13 @@ func TestIsRunning(t *testing.T) {
 	handler := newMockRequestHandler()
 
 	// Start in background
-	startedCh := make(chan bool)
+	errCh := make(chan error)
 	go func() {
-		transport.mutex.Lock()
-		transport.running = true
-		transport.mutex.Unlock()
-		startedCh <- true
-		transport.Start(ctx, handler)
+		errCh <- transport.Start(ctx, handler)
 	}()
 
-	// Wait for start
-	<-startedCh
+	// Give time for Start to set running flag
+	time.Sleep(50 * time.Millisecond)
 
 	// Should be running
 	if !transport.IsRunning() {
@@ -421,7 +420,14 @@ func TestIsRunning(t *testing.T) {
 
 	// Stop
 	cancel()
-	time.Sleep(50 * time.Millisecond)
+	
+	// Wait for Start to return
+	select {
+	case <-errCh:
+		// Start returned
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("Start did not return after context cancel")
+	}
 
 	// Should not be running
 	if transport.IsRunning() {

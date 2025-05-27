@@ -3,8 +3,10 @@ package transport
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -125,15 +127,27 @@ func (t *SSETransport) Start(ctx context.Context, handler RequestHandler) error 
 		TLSConfig:    t.config.TLSConfig,
 	}
 
+	// Create listener
+	var err error
+	if t.config.TLSConfig != nil {
+		t.listener, err = tls.Listen("tcp", t.config.Address, t.config.TLSConfig)
+	} else {
+		t.listener, err = net.Listen("tcp", t.config.Address)
+	}
+	if err != nil {
+		t.running = false
+		return fmt.Errorf("failed to create listener: %w", err)
+	}
+
 	t.running = true
 
 	// Start server
 	go func() {
 		var err error
-		if t.certFile != "" && t.keyFile != "" {
-			err = t.server.ListenAndServeTLS(t.certFile, t.keyFile)
+		if t.certFile != "" && t.keyFile != "" && t.config.TLSConfig != nil {
+			err = t.server.ServeTLS(t.listener, t.certFile, t.keyFile)
 		} else {
-			err = t.server.ListenAndServe()
+			err = t.server.Serve(t.listener)
 		}
 		if err != nil && err != http.ErrServerClosed {
 			t.mu.Lock()
@@ -172,6 +186,11 @@ func (t *SSETransport) Stop() error {
 	}
 	t.clients = make(map[string]*sseClient)
 	t.clientMu.Unlock()
+
+	// Close listener first
+	if t.listener != nil {
+		t.listener.Close()
+	}
 
 	// Stop HTTP server
 	if t.server != nil {

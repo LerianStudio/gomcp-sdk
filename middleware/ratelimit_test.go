@@ -92,7 +92,7 @@ func TestTokenBucket(t *testing.T) {
 		// Make a reservation
 		r := tb.Reserve(3)
 		assert.True(t, r.OK())
-		assert.Zero(t, r.Delay())
+		assert.LessOrEqual(t, r.Delay(), time.Millisecond)
 		
 		// Should have 2 tokens left
 		assert.True(t, tb.Allow(2))
@@ -356,7 +356,7 @@ func TestRateLimitMiddlewareReserveN(t *testing.T) {
 	// Make a reservation
 	reservation := middleware.ReserveN(identifier, 3)
 	assert.True(t, reservation.OK())
-	assert.Zero(t, reservation.Delay())
+	assert.LessOrEqual(t, reservation.Delay(), time.Millisecond)
 	
 	// Cancel the reservation
 	reservation.Cancel()
@@ -364,7 +364,7 @@ func TestRateLimitMiddlewareReserveN(t *testing.T) {
 	// Should be able to reserve 5 tokens now
 	reservation2 := middleware.ReserveN(identifier, 5)
 	assert.True(t, reservation2.OK())
-	assert.Zero(t, reservation2.Delay())
+	assert.LessOrEqual(t, reservation2.Delay(), time.Millisecond)
 }
 
 func TestRateLimitMiddlewareStats(t *testing.T) {

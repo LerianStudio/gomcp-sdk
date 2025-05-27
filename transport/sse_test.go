@@ -330,7 +330,24 @@ func TestSSETransport_CommandEndpoint(t *testing.T) {
 		var jsonResp protocol.JSONRPCResponse
 		err = json.NewDecoder(resp.Body).Decode(&jsonResp)
 		require.NoError(t, err)
-		assert.Equal(t, req.ID, jsonResp.ID)
+		
+		// Compare IDs handling JSON number conversion
+		switch expected := req.ID.(type) {
+		case int:
+			if actual, ok := jsonResp.ID.(float64); ok {
+				assert.Equal(t, float64(expected), actual)
+			} else {
+				assert.Equal(t, req.ID, jsonResp.ID)
+			}
+		case int64:
+			if actual, ok := jsonResp.ID.(float64); ok {
+				assert.Equal(t, float64(expected), actual)
+			} else {
+				assert.Equal(t, req.ID, jsonResp.ID)
+			}
+		default:
+			assert.Equal(t, req.ID, jsonResp.ID)
+		}
 	})
 
 	t.Run("command with client ID", func(t *testing.T) {

@@ -148,7 +148,24 @@ func TestHTTPTransport_HandleRequest(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, "2.0", jsonResp.JSONRPC)
-			assert.Equal(t, tt.request.ID, jsonResp.ID)
+			
+			// Compare IDs handling JSON number conversion
+			switch expected := tt.request.ID.(type) {
+			case int:
+				if actual, ok := jsonResp.ID.(float64); ok {
+					assert.Equal(t, float64(expected), actual)
+				} else {
+					assert.Equal(t, tt.request.ID, jsonResp.ID)
+				}
+			case int64:
+				if actual, ok := jsonResp.ID.(float64); ok {
+					assert.Equal(t, float64(expected), actual)
+				} else {
+					assert.Equal(t, tt.request.ID, jsonResp.ID)
+				}
+			default:
+				assert.Equal(t, tt.request.ID, jsonResp.ID)
+			}
 			
 			if tt.expectedError {
 				assert.NotNil(t, jsonResp.Error)

@@ -17,6 +17,7 @@ type TestServer struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
 	wg        sync.WaitGroup
+	started   chan struct{}
 }
 
 // NewTestServer creates a new test server
@@ -36,6 +37,7 @@ func NewTestServer(name, version string) *TestServer {
 		client:    client,
 		ctx:       ctx,
 		cancel:    cancel,
+		started:   make(chan struct{}),
 	}
 }
 

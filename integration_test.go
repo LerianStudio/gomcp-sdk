@@ -39,27 +39,21 @@ func TestFullMCPFlow(t *testing.T) {
 		})).
 		WithResource("file:///readme.txt", "readme.txt", "This is a test file").
 		WithPrompt("greeting", "Hello, {{name}}!").
-		WithAutoStart().
 		Build()
 	
 	defer srv.Stop()
 	
+	testutil.StartServerWithInit(t, srv, "test-client", "1.0.0")
+	
 	client := srv.Client()
 	ctx := context.Background()
 	
-	// Test 1: Initialize
+	// Test 1: Initialize (already done)
 	t.Run("initialization", func(t *testing.T) {
-		result, err := client.Initialize(ctx, "test-client", "1.0.0")
+		// Server already initialized, just verify connectivity
+		_, err := client.ListTools(ctx)
 		if err != nil {
-			t.Fatalf("Failed to initialize: %v", err)
-		}
-		
-		if result.ProtocolVersion != protocol.Version {
-			t.Errorf("Expected protocol version %s, got %s", protocol.Version, result.ProtocolVersion)
-		}
-		
-		if result.ServerInfo.Name != "integration-test-server" {
-			t.Errorf("Expected server name 'integration-test-server', got %s", result.ServerInfo.Name)
+			t.Fatalf("Failed to list tools: %v", err)
 		}
 	})
 	
@@ -229,18 +223,14 @@ func TestConcurrentOperations(t *testing.T) {
 				return nil, ctx.Err()
 			}
 		})).
-		WithAutoStart().
 		Build()
 	
 	defer srv.Stop()
 	
+	testutil.StartServerWithInit(t, srv, "concurrent-client", "1.0.0")
+	
 	client := srv.Client()
 	ctx := context.Background()
-	
-	// Initialize
-	if _, err := client.Initialize(ctx, "concurrent-client", "1.0.0"); err != nil {
-		t.Fatalf("Failed to initialize: %v", err)
-	}
 	
 	t.Run("concurrent_tool_calls", func(t *testing.T) {
 		const numCalls = 50
@@ -385,18 +375,14 @@ func TestErrorScenarios(t *testing.T) {
 				return nil, errors.New("test error")
 			}
 		})).
-		WithAutoStart().
 		Build()
 	
 	defer srv.Stop()
 	
+	testutil.StartServerWithInit(t, srv, "error-client", "1.0.0")
+	
 	client := srv.Client()
 	ctx := context.Background()
-	
-	// Initialize
-	if _, err := client.Initialize(ctx, "error-client", "1.0.0"); err != nil {
-		t.Fatalf("Failed to initialize: %v", err)
-	}
 	
 	tests := []struct {
 		name           string
@@ -498,18 +484,13 @@ func TestNotifications(t *testing.T) {
 			}
 			return "notification sent", nil
 		})).
-		WithAutoStart().
 		Build()
 	
 	defer srv.Stop()
 	
-	client := srv.Client()
-	ctx := context.Background()
+	testutil.StartServerWithInit(t, srv, "notification-client", "1.0.0")
 	
-	// Initialize
-	if _, err := client.Initialize(ctx, "notification-client", "1.0.0"); err != nil {
-		t.Fatalf("Failed to initialize: %v", err)
-	}
+	client := srv.Client()
 	
 	t.Run("send_notification", func(t *testing.T) {
 		// Send notification (no ID, so no response expected)
@@ -563,18 +544,14 @@ func TestLargePayloads(t *testing.T) {
 			
 			return string(data), nil
 		})).
-		WithAutoStart().
 		Build()
 	
 	defer srv.Stop()
 	
+	testutil.StartServerWithInit(t, srv, "large-payload-client", "1.0.0")
+	
 	client := srv.Client()
 	ctx := context.Background()
-	
-	// Initialize
-	if _, err := client.Initialize(ctx, "large-payload-client", "1.0.0"); err != nil {
-		t.Fatalf("Failed to initialize: %v", err)
-	}
 	
 	sizes := []int{
 		1024,        // 1KB

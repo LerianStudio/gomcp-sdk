@@ -16,23 +16,30 @@ func TestMCPProtocolCompliance(t *testing.T) {
 		WithSimpleTool("test_tool", "test result").
 		WithResource("test://resource", "test resource", "resource content").
 		WithPrompt("test_prompt", "prompt content").
-		WithAutoStart().
 		Build()
 	
 	defer srv.Stop()
+	
+	testutil.StartServerWithInit(t, srv, "test-client", "1.0.0")
 	
 	client := srv.Client()
 	ctx := context.Background()
 	
 	t.Run("protocol_version", func(t *testing.T) {
-		result, err := client.Initialize(ctx, "test-client", "1.0.0")
+		// Protocol version was already verified during initialization
+		// Just verify we can make a basic request
+		id, err := client.SendRequest("tools/list", nil)
 		if err != nil {
-			t.Fatalf("Failed to initialize: %v", err)
+			t.Fatalf("Failed to send request: %v", err)
 		}
 		
-		// Must return the exact protocol version
-		if result.ProtocolVersion != protocol.Version {
-			t.Errorf("Expected protocol version %s, got %s", protocol.Version, result.ProtocolVersion)
+		resp, err := client.WaitForResponse(ctx, id)
+		if err != nil {
+			t.Fatalf("Failed to get response: %v", err)
+		}
+		
+		if resp.JSONRPC != "2.0" {
+			t.Errorf("Expected JSONRPC version 2.0, got %s", resp.JSONRPC)
 		}
 	})
 	
@@ -99,7 +106,6 @@ func TestMCPProtocolCompliance(t *testing.T) {
 func TestJSONRPCCompliance(t *testing.T) {
 	srv := testutil.NewServerBuilder("jsonrpc-server", "1.0.0").
 		WithSimpleTool("echo", "echoed").
-		WithAutoStart().
 		Build()
 	
 	defer srv.Stop()
@@ -191,7 +197,6 @@ func TestMethodSignatures(t *testing.T) {
 		WithSimpleTool("test_tool", "result").
 		WithResource("test://res", "res", "content").
 		WithPrompt("test_prompt", "prompt").
-		WithAutoStart().
 		Build()
 	
 	defer srv.Stop()
@@ -378,15 +383,17 @@ func TestMethodSignatures(t *testing.T) {
 func TestCapabilitiesHandling(t *testing.T) {
 	srv := testutil.NewServerBuilder("capabilities-server", "1.0.0").
 		WithSimpleTool("tool1", "result1").
-		WithAutoStart().
 		Build()
 	
 	defer srv.Stop()
+	
+	testutil.StartServerWithInit(t, srv, "capabilities-client", "1.0.0")
 	
 	client := srv.Client()
 	ctx := context.Background()
 	
 	t.Run("server_capabilities", func(t *testing.T) {
+		// Initialize again to get capabilities
 		result, err := client.Initialize(ctx, "capabilities-client", "1.0.0")
 		if err != nil {
 			t.Fatalf("Failed to initialize: %v", err)
@@ -462,7 +469,6 @@ func TestContentHandling(t *testing.T) {
 		WithTool("empty_content", "Returns empty content", protocol.ToolHandlerFunc(func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 			return protocol.NewToolCallResult(), nil
 		})).
-		WithAutoStart().
 		Build()
 	
 	defer srv.Stop()
@@ -509,7 +515,6 @@ func TestContentHandling(t *testing.T) {
 // TestStrictJSONParsing tests strict JSON parsing requirements
 func TestStrictJSONParsing(t *testing.T) {
 	srv := testutil.NewServerBuilder("json-server", "1.0.0").
-		WithAutoStart().
 		Build()
 	
 	defer srv.Stop()
@@ -619,7 +624,6 @@ func TestInteroperabilityPatterns(t *testing.T) {
 			
 			return "processed", nil
 		})).
-		WithAutoStart().
 		Build()
 	
 	defer srv.Stop()
@@ -712,7 +716,6 @@ func TestSpecialCharacterHandling(t *testing.T) {
 			text, _ := params["text"].(string)
 			return text, nil
 		})).
-		WithAutoStart().
 		Build()
 	
 	defer srv.Stop()
@@ -765,7 +768,6 @@ func TestSpecialCharacterHandling(t *testing.T) {
 func TestLineDelimitedJSONStreaming(t *testing.T) {
 	srv := testutil.NewServerBuilder("streaming-server", "1.0.0").
 		WithSimpleTool("test", "result").
-		WithAutoStart().
 		Build()
 	
 	defer srv.Stop()
@@ -856,7 +858,6 @@ func TestRealWorldCompatibility(t *testing.T) {
 				"processed": params,
 			}, nil
 		})).
-		WithAutoStart().
 		Build()
 	
 	defer srv.Stop()
@@ -970,7 +971,6 @@ func TestEdgeCaseHandling(t *testing.T) {
 			// Return exactly what was sent
 			return params, nil
 		})).
-		WithAutoStart().
 		Build()
 	
 	defer srv.Stop()

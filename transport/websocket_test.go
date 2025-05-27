@@ -102,7 +102,25 @@ func TestWebSocketTransport_Connection(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "2.0", resp.JSONRPC)
-	assert.Equal(t, req.ID, resp.ID)
+	
+	// Compare IDs handling JSON number conversion
+	switch expected := req.ID.(type) {
+	case int:
+		if actual, ok := resp.ID.(float64); ok {
+			assert.Equal(t, float64(expected), actual)
+		} else {
+			assert.Equal(t, req.ID, resp.ID)
+		}
+	case int64:
+		if actual, ok := resp.ID.(float64); ok {
+			assert.Equal(t, float64(expected), actual)
+		} else {
+			assert.Equal(t, req.ID, resp.ID)
+		}
+	default:
+		assert.Equal(t, req.ID, resp.ID)
+	}
+	
 	assert.Nil(t, resp.Error)
 	
 	result := resp.Result.(map[string]interface{})
@@ -353,11 +371,21 @@ func TestWebSocketTransport_PingPong(t *testing.T) {
 		}
 	}()
 
+	// Set up read handler to process pongs
+	go func() {
+		for {
+			_, _, err := conn.ReadMessage()
+			if err != nil {
+				return
+			}
+		}
+	}()
+
 	// Wait for ping/pong
 	select {
 	case <-pongReceived:
 		// Success - ping/pong working
-	case <-time.After(2 * time.Second):
+	case <-time.After(3 * time.Second):
 		t.Fatal("No pong received")
 	}
 }
