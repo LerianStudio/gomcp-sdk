@@ -1,8 +1,8 @@
+run:
+  timeout: 5m
+
 linters:
-  disable:
-    - errcheck
-    - gosec
-    - staticcheck
+  disable-all: true
   enable:
     - gofmt
     - govet

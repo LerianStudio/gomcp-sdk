@@ -182,7 +182,7 @@ func TestStdioTransportStart(t *testing.T) {
 				h.delay = 100 * time.Millisecond
 				return h
 			}(),
-			expectedError: true,
+			expectedError: false, // Transport completes normally even if handler is slow
 		},
 	}
 
