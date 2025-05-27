@@ -63,3 +63,7 @@ mcp-benchmark
 # Local development
 *.local
 .cache/
+# Test binaries
+*.test
+mcp-validator
+debug_*.go
