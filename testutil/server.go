@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"context"
+	"fmt"
 	"github.com/fredcamaral/gomcp-sdk/protocol"
 	"github.com/fredcamaral/gomcp-sdk/server"
 	"github.com/fredcamaral/gomcp-sdk/transport"
@@ -43,22 +44,34 @@ func NewTestServer(name, version string) *TestServer {
 
 // Start starts the test server
 func (ts *TestServer) Start() error {
-	// Start reading responses in background
+	// Start reading responses in background FIRST
 	ts.wg.Add(1)
 	go func() {
 		defer ts.wg.Done()
 		ts.client.ReadResponses(ts.ctx)
 	}()
 	
+	// Give the reader time to start
+	time.Sleep(50 * time.Millisecond)
+	
 	// Start server in background
 	ts.wg.Add(1)
 	go func() {
 		defer ts.wg.Done()
+		close(ts.started)
 		ts.Server.Start(ts.ctx)
 	}()
 	
-	// Give server time to start
-	time.Sleep(200 * time.Millisecond)
+	// Wait for server to actually start
+	select {
+	case <-ts.started:
+		// Server goroutine has started
+	case <-time.After(2 * time.Second):
+		return fmt.Errorf("server failed to start within timeout")
+	}
+	
+	// Give server a bit more time to be fully ready
+	time.Sleep(100 * time.Millisecond)
 	
 	return nil
 }

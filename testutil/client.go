@@ -79,6 +79,8 @@ func (c *TestClient) SendRequest(method string, params interface{}) (int64, erro
 		Params:  params,
 	}
 	
+	// Debug: log the request being sent
+	// fmt.Printf("[TestClient] Sending request: id=%d method=%s\n", id, method)
 	
 	if err := c.encoder.Encode(req); err != nil {
 		return 0, fmt.Errorf("encoding request: %w", err)
@@ -111,6 +113,12 @@ func (c *TestClient) SendNotification(method string, params interface{}) error {
 
 // ReadResponses reads responses from the server output
 func (c *TestClient) ReadResponses(ctx context.Context) {
+	// Debug: log when reader starts
+	// fmt.Println("[TestClient] ReadResponses started")
+	defer func() {
+		// fmt.Println("[TestClient] ReadResponses stopped")
+	}()
+	
 	for {
 		select {
 		case <-ctx.Done():
@@ -119,6 +127,7 @@ func (c *TestClient) ReadResponses(ctx context.Context) {
 			var resp protocol.JSONRPCResponse
 			if err := c.decoder.Decode(&resp); err != nil {
 				if err != io.EOF && err != io.ErrClosedPipe {
+					// fmt.Printf("[TestClient] Decode error: %v\n", err)
 					select {
 					case c.errors <- err:
 					case <-ctx.Done():
@@ -127,6 +136,9 @@ func (c *TestClient) ReadResponses(ctx context.Context) {
 				}
 				return
 			}
+			
+			// Debug: log received response
+			// fmt.Printf("[TestClient] Received response: id=%v method result=%v error=%v\n", resp.ID, resp.Result != nil, resp.Error)
 			
 			select {
 			case c.responses <- &resp:

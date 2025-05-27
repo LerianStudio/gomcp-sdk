@@ -332,8 +332,8 @@ func TestWebSocketTransport_PingPong(t *testing.T) {
 	config := &WebSocketConfig{
 		Address:      "localhost:0",
 		Path:         "/ws",
-		PingInterval: 500 * time.Millisecond,
-		PongTimeout:  1 * time.Second,
+		PingInterval: 100 * time.Millisecond,
+		PongTimeout:  2 * time.Second,
 	}
 
 	transport := NewWebSocketTransport(config)
@@ -381,11 +381,14 @@ func TestWebSocketTransport_PingPong(t *testing.T) {
 		}
 	}()
 
+	// Give server time to start sending pings
+	time.Sleep(200 * time.Millisecond)
+
 	// Wait for ping/pong
 	select {
 	case <-pongReceived:
 		// Success - ping/pong working
-	case <-time.After(3 * time.Second):
+	case <-time.After(2 * time.Second):
 		t.Fatal("No pong received")
 	}
 }
