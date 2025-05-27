@@ -434,17 +434,33 @@ func TestSSETransport_MaxClients(t *testing.T) {
 
 	client := &http.Client{Timeout: 5 * time.Second}
 
-	// Connect max clients
+	// Connect max clients and keep them alive
 	responses := make([]*http.Response, 2)
+	readers := make([]*bufio.Scanner, 2)
+	
 	for i := 0; i < 2; i++ {
 		resp, err := client.Get(baseURL)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		responses[i] = resp
+		
+		// Start reading to keep connection alive
+		readers[i] = bufio.NewScanner(resp.Body)
+		go func(scanner *bufio.Scanner) {
+			for scanner.Scan() {
+				// Keep reading events
+			}
+		}(readers[i])
 	}
 
-	// Wait for connections to be fully established
-	time.Sleep(100 * time.Millisecond)
+	// Wait for connections to be fully established and verify
+	maxRetries := 10
+	for i := 0; i < maxRetries; i++ {
+		if transport.ClientCount() == 2 {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 	assert.Equal(t, 2, transport.ClientCount())
 
 	// Try to connect one more (should fail)
@@ -464,8 +480,10 @@ func TestSSETransport_MaxClients(t *testing.T) {
 	resp.Body.Close()
 
 	// Cleanup
-	for _, r := range responses[1:] {
-		r.Body.Close()
+	for _, r := range responses {
+		if r != nil && r.Body != nil {
+			r.Body.Close()
+		}
 	}
 }
 
