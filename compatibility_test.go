@@ -98,13 +98,10 @@ func TestJSONRPCCompliance(t *testing.T) {
 	
 	defer srv.Stop()
 	
+	testutil.StartServerWithInit(t, srv, "jsonrpc-client", "1.0.0")
+	
 	client := srv.Client()
 	ctx := context.Background()
-	
-	// Initialize first
-	if _, err := client.Initialize(ctx, "jsonrpc-client", "1.0.0"); err != nil {
-		t.Fatalf("Failed to initialize: %v", err)
-	}
 	
 	t.Run("error_codes", func(t *testing.T) {
 		testCases := []struct {
@@ -185,13 +182,10 @@ func TestMethodSignatures(t *testing.T) {
 	
 	defer srv.Stop()
 	
+	testutil.StartServerWithInit(t, srv, "signature-client", "1.0.0")
+	
 	client := srv.Client()
 	ctx := context.Background()
-	
-	// Initialize
-	if _, err := client.Initialize(ctx, "signature-client", "1.0.0"); err != nil {
-		t.Fatalf("Failed to initialize: %v", err)
-	}
 	
 	testCases := []struct {
 		method         string
@@ -457,13 +451,10 @@ func TestContentHandling(t *testing.T) {
 	
 	defer srv.Stop()
 	
+	testutil.StartServerWithInit(t, srv, "content-client", "1.0.0")
+	
 	client := srv.Client()
 	ctx := context.Background()
-	
-	// Initialize
-	if _, err := client.Initialize(ctx, "content-client", "1.0.0"); err != nil {
-		t.Fatalf("Failed to initialize: %v", err)
-	}
 	
 	t.Run("multiple_content_items", func(t *testing.T) {
 		result, err := client.CallTool(ctx, "multi_content", nil)
@@ -612,13 +603,10 @@ func TestInteroperabilityPatterns(t *testing.T) {
 	
 	defer srv.Stop()
 	
+	testutil.StartServerWithInit(t, srv, "interop-client", "1.0.0")
+	
 	client := srv.Client()
 	ctx := context.Background()
-	
-	// Initialize
-	if _, err := client.Initialize(ctx, "interop-client", "1.0.0"); err != nil {
-		t.Fatalf("Failed to initialize: %v", err)
-	}
 	
 	t.Run("number_handling", func(t *testing.T) {
 		// Different clients might send numbers in different formats
@@ -704,13 +692,10 @@ func TestSpecialCharacterHandling(t *testing.T) {
 	
 	defer srv.Stop()
 	
+	testutil.StartServerWithInit(t, srv, "unicode-client", "1.0.0")
+	
 	client := srv.Client()
 	ctx := context.Background()
-	
-	// Initialize
-	if _, err := client.Initialize(ctx, "unicode-client", "1.0.0"); err != nil {
-		t.Fatalf("Failed to initialize: %v", err)
-	}
 	
 	specialStrings := []struct {
 		name string
@@ -756,13 +741,10 @@ func TestLineDelimitedJSONStreaming(t *testing.T) {
 	
 	defer srv.Stop()
 	
+	testutil.StartServerWithInit(t, srv, "streaming-client", "1.0.0")
+	
 	client := srv.Client()
 	ctx := context.Background()
-	
-	// Initialize
-	if _, err := client.Initialize(ctx, "streaming-client", "1.0.0"); err != nil {
-		t.Fatalf("Failed to initialize: %v", err)
-	}
 	
 	t.Run("multiple_requests_single_line", func(t *testing.T) {
 		// Skip this test for now - requires raw IO access
@@ -817,14 +799,10 @@ func TestRealWorldCompatibility(t *testing.T) {
 	
 	defer srv.Stop()
 	
+	testutil.StartServerWithInit(t, srv, "vscode-mcp-client", "0.1.0")
+	
 	client := srv.Client()
 	ctx := context.Background()
-	
-	// Initialize with realistic client info
-	_, err := client.Initialize(ctx, "vscode-mcp-client", "0.1.0")
-	if err != nil {
-		t.Fatalf("Failed to initialize: %v", err)
-	}
 	
 	t.Run("typescript_style_requests", func(t *testing.T) {
 		// TypeScript clients might send certain patterns
@@ -930,13 +908,10 @@ func TestEdgeCaseHandling(t *testing.T) {
 	
 	defer srv.Stop()
 	
+	testutil.StartServerWithInit(t, srv, "edge-client", "1.0.0")
+	
 	client := srv.Client()
 	ctx := context.Background()
-	
-	// Initialize
-	if _, err := client.Initialize(ctx, "edge-client", "1.0.0"); err != nil {
-		t.Fatalf("Failed to initialize: %v", err)
-	}
 	
 	edgeCases := []struct {
 		name   string
