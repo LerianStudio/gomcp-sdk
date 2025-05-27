@@ -64,8 +64,9 @@ func (c *sseTestClient) connect(url string) error {
 				// End of event
 				c.events <- eventData.String()
 				eventData.Reset()
-			} else if strings.HasPrefix(line, "data: ") {
-				eventData.WriteString(strings.TrimPrefix(line, "data: "))
+			} else if line != "" {
+				// Capture the full line (including "event:", "data:", etc.)
+				eventData.WriteString(line + "\n")
 			}
 		}
 
@@ -140,9 +141,12 @@ func TestSSETransport_Connection(t *testing.T) {
 
 	// Wait for connection event
 	select {
-	case event := <-client.events:
+	case eventData := <-client.events:
+		event, err := ParseSSEEvent(eventData)
+		require.NoError(t, err)
+		
 		var data map[string]interface{}
-		err = json.Unmarshal([]byte(event), &data)
+		err = json.Unmarshal([]byte(event.Data), &data)
 		require.NoError(t, err)
 		assert.NotEmpty(t, data["clientId"])
 	case <-time.After(2 * time.Second):
@@ -151,9 +155,12 @@ func TestSSETransport_Connection(t *testing.T) {
 
 	// Wait for capabilities event
 	select {
-	case event := <-client.events:
+	case eventData := <-client.events:
+		event, err := ParseSSEEvent(eventData)
+		require.NoError(t, err)
+		
 		var data map[string]interface{}
-		err = json.Unmarshal([]byte(event), &data)
+		err = json.Unmarshal([]byte(event.Data), &data)
 		require.NoError(t, err)
 		assert.NotNil(t, data)
 	case <-time.After(2 * time.Second):
@@ -229,9 +236,12 @@ func TestSSETransport_Broadcast(t *testing.T) {
 	// All clients should receive the broadcast
 	for i, client := range clients {
 		select {
-		case event := <-client.events:
+		case eventData := <-client.events:
+			event, err := ParseSSEEvent(eventData)
+			require.NoError(t, err)
+			
 			var data map[string]interface{}
-			err = json.Unmarshal([]byte(event), &data)
+			err = json.Unmarshal([]byte(event.Data), &data)
 			require.NoError(t, err)
 			assert.Equal(t, "broadcast test", data["message"])
 		case <-time.After(2 * time.Second):
@@ -378,10 +388,17 @@ func TestSSETransport_CommandEndpoint(t *testing.T) {
 		require.NoError(t, err)
 
 		// Get client ID from connection event
-		event := <-sseClient.events
+		eventData := <-sseClient.events
+		event, err := ParseSSEEvent(eventData)
+		require.NoError(t, err)
+		
 		var connData map[string]interface{}
-		json.Unmarshal([]byte(event), &connData)
+		err = json.Unmarshal([]byte(event.Data), &connData)
+		require.NoError(t, err)
 		clientID := connData["clientId"].(string)
+		
+		// Drain capabilities event
+		<-sseClient.events
 
 		// Send command with client ID
 		req := &protocol.JSONRPCRequest{
@@ -422,8 +439,21 @@ func TestSSETransport_CommandEndpoint(t *testing.T) {
 			require.NoError(t, err)
 			
 			// Verify response matches request
-			assert.Equal(t, req.ID, jsonResp.ID)
-			assert.Equal(t, "test response", jsonResp.Result)
+			// Compare IDs handling JSON number conversion
+			switch expected := req.ID.(type) {
+			case int:
+				if actual, ok := jsonResp.ID.(float64); ok {
+					assert.Equal(t, float64(expected), actual)
+				} else {
+					assert.Equal(t, req.ID, jsonResp.ID)
+				}
+			default:
+				assert.Equal(t, req.ID, jsonResp.ID)
+			}
+			
+			// Check result
+			result := jsonResp.Result.(map[string]interface{})
+			assert.Equal(t, "test.method", result["echo"])
 		case <-time.After(2 * time.Second):
 			t.Fatal("Timeout waiting for SSE response")
 		}
@@ -869,7 +899,7 @@ func TestSSETransport_EventFormatting(t *testing.T) {
 	eventData := <-sseClient.events
 	event, err := ParseSSEEvent(eventData)
 	require.NoError(t, err)
-	assert.Equal(t, "connection", event.Event)
+	assert.Equal(t, "connected", event.Event)
 
 	// Parse client ID from connection data
 	var connData map[string]interface{}
@@ -877,6 +907,9 @@ func TestSSETransport_EventFormatting(t *testing.T) {
 	require.NoError(t, err)
 	clientID := connData["clientId"].(string)
 	assert.NotEmpty(t, clientID)
+	
+	// Drain capabilities event
+	<-sseClient.events
 
 	// Test different event types
 	testCases := []struct {

@@ -131,11 +131,13 @@ func TestPluginRegistry(t *testing.T) {
 		plugin := newMockPlugin("test-plugin", PluginTypeHandler)
 
 		// Register and load
-		registry.Register(plugin)
-		registry.Load(context.Background(), "test-plugin", nil)
+		err := registry.Register(plugin)
+		require.NoError(t, err)
+		err = registry.Load(context.Background(), "test-plugin", nil)
+		require.NoError(t, err)
 
 		// Unregister
-		err := registry.Unregister("test-plugin")
+		err = registry.Unregister("test-plugin")
 		assert.NoError(t, err)
 		assert.True(t, plugin.stopCalled)
 
@@ -155,8 +157,9 @@ func TestPluginRegistry(t *testing.T) {
 		plugin := newMockPlugin("test-plugin", PluginTypeHandler)
 		plugin.initError = errors.New("init failed")
 
-		registry.Register(plugin)
-		err := registry.Load(context.Background(), "test-plugin", nil)
+		err := registry.Register(plugin)
+		require.NoError(t, err)
+		err = registry.Load(context.Background(), "test-plugin", nil)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "init failed")
 
@@ -172,8 +175,9 @@ func TestPluginRegistry(t *testing.T) {
 		plugin := newMockPlugin("test-plugin", PluginTypeHandler)
 		plugin.startError = errors.New("start failed")
 
-		registry.Register(plugin)
-		err := registry.Load(context.Background(), "test-plugin", nil)
+		err := registry.Register(plugin)
+		require.NoError(t, err)
+		err = registry.Load(context.Background(), "test-plugin", nil)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "start failed")
 		assert.True(t, plugin.initCalled)
@@ -188,11 +192,13 @@ func TestPluginRegistry(t *testing.T) {
 		registry := NewPluginRegistry(logger)
 		plugin := newMockPlugin("test-plugin", PluginTypeHandler)
 
-		registry.Register(plugin)
-		registry.Load(context.Background(), "test-plugin", nil)
+		err := registry.Register(plugin)
+		require.NoError(t, err)
+		err = registry.Load(context.Background(), "test-plugin", nil)
+		require.NoError(t, err)
 
 		// Unload
-		err := registry.Unload(context.Background(), "test-plugin")
+		err = registry.Unload(context.Background(), "test-plugin")
 		assert.NoError(t, err)
 		assert.True(t, plugin.stopCalled)
 
@@ -215,13 +221,19 @@ func TestPluginRegistry(t *testing.T) {
 		middleware2 := newMockMiddlewarePlugin("middleware2")
 		tool1 := newMockToolPlugin("tool1")
 
-		registry.Register(middleware1)
-		registry.Register(middleware2)
-		registry.Register(tool1)
+		err := registry.Register(middleware1)
+		require.NoError(t, err)
+		err = registry.Register(middleware2)
+		require.NoError(t, err)
+		err = registry.Register(tool1)
+		require.NoError(t, err)
 
-		registry.Load(context.Background(), "middleware1", nil)
-		registry.Load(context.Background(), "middleware2", nil)
-		registry.Load(context.Background(), "tool1", nil)
+		err = registry.Load(context.Background(), "middleware1", nil)
+		require.NoError(t, err)
+		err = registry.Load(context.Background(), "middleware2", nil)
+		require.NoError(t, err)
+		err = registry.Load(context.Background(), "tool1", nil)
+		require.NoError(t, err)
 
 		// Get middleware plugins
 		middlewares := registry.GetByType(PluginTypeMiddleware)
@@ -243,9 +255,12 @@ func TestPluginRegistry(t *testing.T) {
 		plugin1 := newMockPlugin("plugin1", PluginTypeHandler)
 		plugin2 := newMockPlugin("plugin2", PluginTypeMiddleware)
 
-		registry.Register(plugin1)
-		registry.Register(plugin2)
-		registry.Load(context.Background(), "plugin1", map[string]interface{}{"key": "value"})
+		err := registry.Register(plugin1)
+		require.NoError(t, err)
+		err = registry.Register(plugin2)
+		require.NoError(t, err)
+		err = registry.Load(context.Background(), "plugin1", map[string]interface{}{"key": "value"})
+		require.NoError(t, err)
 
 		// List all plugins
 		infos := registry.List()
@@ -274,10 +289,14 @@ func TestPluginRegistry(t *testing.T) {
 		plugin2 := newMockPlugin("plugin2", PluginTypeHandler)
 		plugin2.healthError = errors.New("unhealthy")
 
-		registry.Register(plugin1)
-		registry.Register(plugin2)
-		registry.Load(context.Background(), "plugin1", nil)
-		registry.Load(context.Background(), "plugin2", nil)
+		err := registry.Register(plugin1)
+		require.NoError(t, err)
+		err = registry.Register(plugin2)
+		require.NoError(t, err)
+		err = registry.Load(context.Background(), "plugin1", nil)
+		require.NoError(t, err)
+		err = registry.Load(context.Background(), "plugin2", nil)
+		require.NoError(t, err)
 
 		// Check health
 		health := registry.Health()
@@ -300,8 +319,10 @@ func TestPluginHooks(t *testing.T) {
 		})
 
 		plugin := newMockPlugin("test-plugin", PluginTypeHandler)
-		registry.Register(plugin)
-		registry.Load(context.Background(), "test-plugin", nil)
+		err := registry.Register(plugin)
+		require.NoError(t, err)
+		err = registry.Load(context.Background(), "test-plugin", nil)
+		require.NoError(t, err)
 
 		assert.Len(t, loadedPlugins, 1)
 		assert.Equal(t, plugin, loadedPlugins[0])
@@ -316,9 +337,12 @@ func TestPluginHooks(t *testing.T) {
 		})
 
 		plugin := newMockPlugin("test-plugin", PluginTypeHandler)
-		registry.Register(plugin)
-		registry.Load(context.Background(), "test-plugin", nil)
-		registry.Unregister("test-plugin")
+		err := registry.Register(plugin)
+		require.NoError(t, err)
+		err = registry.Load(context.Background(), "test-plugin", nil)
+		require.NoError(t, err)
+		err = registry.Unregister("test-plugin")
+		require.NoError(t, err)
 
 		assert.Len(t, unloadedPlugins, 1)
 		assert.Equal(t, plugin, unloadedPlugins[0])
@@ -337,8 +361,9 @@ func TestPluginHooks(t *testing.T) {
 		plugin := newMockPlugin("test-plugin", PluginTypeHandler)
 		plugin.initError = errors.New("init error")
 
-		registry.Register(plugin)
-		registry.Load(context.Background(), "test-plugin", nil)
+		err := registry.Register(plugin)
+		require.NoError(t, err)
+		_ = registry.Load(context.Background(), "test-plugin", nil) // Error expected
 
 		assert.Len(t, errorPlugins, 1)
 		assert.Equal(t, plugin, errorPlugins[0])
@@ -397,7 +422,8 @@ func TestConcurrentPluginOperations(t *testing.T) {
 	// Register multiple plugins
 	for i := 0; i < 10; i++ {
 		plugin := newMockPlugin(fmt.Sprintf("plugin%d", i), PluginTypeHandler)
-		registry.Register(plugin)
+		err := registry.Register(plugin)
+		require.NoError(t, err)
 	}
 
 	// Concurrent operations
@@ -495,13 +521,15 @@ func BenchmarkPluginRegistry(b *testing.B) {
 	// Register and load some plugins
 	for i := 0; i < 10; i++ {
 		plugin := newMockPlugin(fmt.Sprintf("plugin%d", i), PluginTypeHandler)
-		registry.Register(plugin)
-		registry.Load(context.Background(), plugin.Name(), nil)
+		err := registry.Register(plugin)
+		require.NoError(b, err)
+		err = registry.Load(context.Background(), plugin.Name(), nil)
+		require.NoError(b, err)
 	}
 
 	b.Run("Get", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			registry.Get(fmt.Sprintf("plugin%d", i%10))
+			_, _ = registry.Get(fmt.Sprintf("plugin%d", i%10))
 		}
 	})
 
@@ -530,12 +558,14 @@ func BenchmarkConcurrentGet(b *testing.B) {
 
 	// Register and load a plugin
 	plugin := newMockPlugin("test-plugin", PluginTypeHandler)
-	registry.Register(plugin)
-	registry.Load(context.Background(), "test-plugin", nil)
+	err := registry.Register(plugin)
+	require.NoError(b, err)
+	err = registry.Load(context.Background(), "test-plugin", nil)
+	require.NoError(b, err)
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			registry.Get("test-plugin")
+			_, _ = registry.Get("test-plugin")
 		}
 	})
 }

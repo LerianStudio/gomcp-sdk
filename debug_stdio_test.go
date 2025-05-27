@@ -105,8 +105,16 @@ func TestStdioPipeCommunication(t *testing.T) {
 	}
 
 	// Clean up
-	clientToServer.Close()
-	serverToClient.Close()
-	serverFromClient.Close()
-	clientFromServer.Close()
+	if err := clientToServer.Close(); err != nil {
+		t.Errorf("Failed to close clientToServer pipe: %v", err)
+	}
+	if err := serverToClient.Close(); err != nil {
+		t.Errorf("Failed to close serverToClient pipe: %v", err)
+	}
+	if err := serverFromClient.Close(); err != nil {
+		t.Errorf("Failed to close serverFromClient pipe: %v", err)
+	}
+	if err := clientFromServer.Close(); err != nil {
+		t.Errorf("Failed to close clientFromServer pipe: %v", err)
+	}
 }

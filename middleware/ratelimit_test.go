@@ -296,7 +296,8 @@ func TestRateLimitMiddlewareCleanup(t *testing.T) {
 	// Create requests for multiple users
 	for i := 0; i < 5; i++ {
 		ctx := context.WithValue(context.Background(), ContextKeyUser, &User{ID: fmt.Sprintf("user%d", i)})
-		middleware.Process(ctx, "request", handler)
+		_, err := middleware.Process(ctx, "request", handler)
+		assert.NoError(t, err)
 	}
 
 	// Verify limiters were created
@@ -385,8 +386,10 @@ func TestRateLimitMiddlewareStats(t *testing.T) {
 	ctx1 := context.WithValue(context.Background(), ContextKeyUser, &User{ID: "user1"})
 	ctx2 := context.WithValue(context.Background(), ContextKeyUser, &User{ID: "user2"})
 
-	middleware.Process(ctx1, "request", handler)
-	middleware.Process(ctx2, "request", handler)
+	_, err := middleware.Process(ctx1, "request", handler)
+	assert.NoError(t, err)
+	_, err = middleware.Process(ctx2, "request", handler)
+	assert.NoError(t, err)
 
 	// Get stats
 	stats := middleware.Stats()

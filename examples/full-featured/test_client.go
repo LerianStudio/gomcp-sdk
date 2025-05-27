@@ -43,7 +43,11 @@ func (c *TestClient) sendRequest(method string, params interface{}) (json.RawMes
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Printf("test_client: failed to close response body: %v\n", err)
+		}
+	}()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -124,7 +128,10 @@ func (c *TestClient) testInitialize() {
 	}
 
 	var initResult map[string]interface{}
-	json.Unmarshal(result, &initResult)
+	if err := json.Unmarshal(result, &initResult); err != nil {
+		fmt.Printf("❌ Failed to parse initialize result: %v\n", err)
+		return
+	}
 	fmt.Printf("✅ Initialized as Claude Desktop\n")
 	fmt.Printf("   Server: %v\n", initResult["serverInfo"])
 	fmt.Printf("   Capabilities: %v\n", initResult["capabilities"])
@@ -141,7 +148,10 @@ func (c *TestClient) testTools() {
 	}
 
 	var tools map[string]interface{}
-	json.Unmarshal(result, &tools)
+	if err := json.Unmarshal(result, &tools); err != nil {
+		fmt.Printf("❌ Failed to parse tools list: %v\n", err)
+		return
+	}
 	fmt.Printf("✅ Found %d tools\n", len(tools["tools"].([]interface{})))
 
 	// Call echo tool
@@ -172,7 +182,10 @@ func (c *TestClient) testResources() {
 	}
 
 	var resources map[string]interface{}
-	json.Unmarshal(result, &resources)
+	if err := json.Unmarshal(result, &resources); err != nil {
+		fmt.Printf("❌ Failed to parse resources list: %v\n", err)
+		return
+	}
 	fmt.Printf("✅ Found %d resources\n", len(resources["resources"].([]interface{})))
 
 	// Read resource
@@ -200,7 +213,10 @@ func (c *TestClient) testPrompts() {
 	}
 
 	var prompts map[string]interface{}
-	json.Unmarshal(result, &prompts)
+	if err := json.Unmarshal(result, &prompts); err != nil {
+		fmt.Printf("❌ Failed to parse prompts list: %v\n", err)
+		return
+	}
 	fmt.Printf("✅ Found %d prompts\n", len(prompts["prompts"].([]interface{})))
 
 	// Get prompt
@@ -236,7 +252,10 @@ func (c *TestClient) testRoots() {
 	}
 
 	var roots map[string]interface{}
-	json.Unmarshal(result, &roots)
+	if err := json.Unmarshal(result, &roots); err != nil {
+		fmt.Printf("❌ Failed to parse roots list: %v\n", err)
+		return
+	}
 	fmt.Printf("✅ Found %d roots\n", len(roots["roots"].([]interface{})))
 }
 
@@ -290,7 +309,10 @@ func (c *TestClient) testDiscovery() {
 	}
 
 	var discovery map[string]interface{}
-	json.Unmarshal(result, &discovery)
+	if err := json.Unmarshal(result, &discovery); err != nil {
+		fmt.Printf("❌ Failed to parse discovery result: %v\n", err)
+		return
+	}
 	fmt.Printf("✅ Discovery completed\n")
 }
 
@@ -312,7 +334,10 @@ func (c *TestClient) testSubscriptions() {
 	}
 
 	var subResponse map[string]interface{}
-	json.Unmarshal(result, &subResponse)
+	if err := json.Unmarshal(result, &subResponse); err != nil {
+		fmt.Printf("❌ Failed to parse subscription response: %v\n", err)
+		return
+	}
 	fmt.Printf("✅ Subscribed with ID: %v\n", subResponse["subscriptionId"])
 }
 

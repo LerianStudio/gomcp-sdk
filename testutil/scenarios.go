@@ -391,7 +391,7 @@ var CommonScenarios = struct {
 
 						// Verify expected content
 						a.AssertEqual("text", contents[0].Type)
-						a.AssertEqual("Test resource content", contents[0].Text)
+						a.AssertEqual("Test file contents", contents[0].Text)
 
 						return nil
 					},

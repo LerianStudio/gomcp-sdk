@@ -421,7 +421,8 @@ func BenchmarkPipeline(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			pipeline.Execute(context.Background(), i, handler)
+			_, err := pipeline.Execute(context.Background(), i, handler)
+			require.NoError(b, err)
 		}
 	})
 
@@ -435,7 +436,8 @@ func BenchmarkPipeline(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			pipeline.Execute(context.Background(), i, handler)
+			_, err := pipeline.Execute(context.Background(), i, handler)
+			require.NoError(b, err)
 		}
 	})
 
@@ -454,7 +456,8 @@ func BenchmarkPipeline(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			pipeline.Execute(context.Background(), i, handler)
+			_, err := pipeline.Execute(context.Background(), i, handler)
+			require.NoError(b, err)
 		}
 	})
 }

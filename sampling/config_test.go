@@ -14,10 +14,18 @@ func TestNewConfig(t *testing.T) {
 	oldModel := os.Getenv("MCP_SAMPLING_DEFAULT_MODEL")
 	oldLogging := os.Getenv("MCP_SAMPLING_ENABLE_LOGGING")
 	defer func() {
-		os.Setenv("MCP_SAMPLING_PROVIDER", oldProvider)
-		os.Setenv("MCP_SAMPLING_API_KEY", oldAPIKey)
-		os.Setenv("MCP_SAMPLING_DEFAULT_MODEL", oldModel)
-		os.Setenv("MCP_SAMPLING_ENABLE_LOGGING", oldLogging)
+		if err := os.Setenv("MCP_SAMPLING_PROVIDER", oldProvider); err != nil {
+			t.Logf("Failed to restore MCP_SAMPLING_PROVIDER: %v", err)
+		}
+		if err := os.Setenv("MCP_SAMPLING_API_KEY", oldAPIKey); err != nil {
+			t.Logf("Failed to restore MCP_SAMPLING_API_KEY: %v", err)
+		}
+		if err := os.Setenv("MCP_SAMPLING_DEFAULT_MODEL", oldModel); err != nil {
+			t.Logf("Failed to restore MCP_SAMPLING_DEFAULT_MODEL: %v", err)
+		}
+		if err := os.Setenv("MCP_SAMPLING_ENABLE_LOGGING", oldLogging); err != nil {
+			t.Logf("Failed to restore MCP_SAMPLING_ENABLE_LOGGING: %v", err)
+		}
 	}()
 
 	tests := []struct {
@@ -72,7 +80,9 @@ func TestNewConfig(t *testing.T) {
 			
 			// Set test env vars
 			for k, v := range tt.envVars {
-				os.Setenv(k, v)
+				if err := os.Setenv(k, v); err != nil {
+					t.Fatalf("Failed to set env var %s: %v", k, err)
+				}
 			}
 
 			config := NewConfig()
@@ -269,7 +279,11 @@ func TestConfig_MapModel(t *testing.T) {
 func TestGetEnv(t *testing.T) {
 	// Save current env
 	oldValue := os.Getenv("TEST_ENV_VAR")
-	defer os.Setenv("TEST_ENV_VAR", oldValue)
+	defer func() {
+		if err := os.Setenv("TEST_ENV_VAR", oldValue); err != nil {
+			t.Logf("Failed to restore env var: %v", err)
+		}
+	}()
 
 	tests := []struct {
 		name         string
@@ -293,7 +307,9 @@ func TestGetEnv(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			os.Setenv("TEST_ENV_VAR", tt.envValue)
+			if err := os.Setenv("TEST_ENV_VAR", tt.envValue); err != nil {
+				t.Fatalf("Failed to set env var: %v", err)
+			}
 			got := getEnv("TEST_ENV_VAR", tt.defaultValue)
 			if got != tt.want {
 				t.Errorf("getEnv() = %q, want %q", got, tt.want)

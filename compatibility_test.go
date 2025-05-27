@@ -17,7 +17,11 @@ func TestMCPProtocolCompliance(t *testing.T) {
 		WithPrompt("test_prompt", "prompt content").
 		Build()
 
-	defer srv.Stop()
+	defer func() {
+		if err := srv.Stop(); err != nil {
+			t.Logf("Failed to stop server: %v", err)
+		}
+	}()
 
 	testutil.StartServerWithInit(t, srv, "test-client", "1.0.0")
 
@@ -96,7 +100,11 @@ func TestJSONRPCCompliance(t *testing.T) {
 		WithSimpleTool("echo", "echoed").
 		Build()
 
-	defer srv.Stop()
+	defer func() {
+		if err := srv.Stop(); err != nil {
+			t.Logf("Failed to stop server: %v", err)
+		}
+	}()
 
 	testutil.StartServerWithInit(t, srv, "jsonrpc-client", "1.0.0")
 
@@ -180,7 +188,11 @@ func TestMethodSignatures(t *testing.T) {
 		WithPrompt("test_prompt", "prompt").
 		Build()
 
-	defer srv.Stop()
+	defer func() {
+		if err := srv.Stop(); err != nil {
+			t.Logf("Failed to stop server: %v", err)
+		}
+	}()
 
 	testutil.StartServerWithInit(t, srv, "signature-client", "1.0.0")
 
@@ -363,7 +375,11 @@ func TestCapabilitiesHandling(t *testing.T) {
 		WithSimpleTool("tool1", "result1").
 		Build()
 
-	defer srv.Stop()
+	defer func() {
+		if err := srv.Stop(); err != nil {
+			t.Logf("Failed to stop server: %v", err)
+		}
+	}()
 
 	testutil.StartServerWithInit(t, srv, "capabilities-client", "1.0.0")
 
@@ -449,7 +465,11 @@ func TestContentHandling(t *testing.T) {
 		})).
 		Build()
 
-	defer srv.Stop()
+	defer func() {
+		if err := srv.Stop(); err != nil {
+			t.Logf("Failed to stop server: %v", err)
+		}
+	}()
 
 	testutil.StartServerWithInit(t, srv, "content-client", "1.0.0")
 
@@ -492,7 +512,11 @@ func TestStrictJSONParsing(t *testing.T) {
 	srv := testutil.NewServerBuilder("json-server", "1.0.0").
 		Build()
 
-	defer srv.Stop()
+	defer func() {
+		if err := srv.Stop(); err != nil {
+			t.Logf("Failed to stop server: %v", err)
+		}
+	}()
 
 	client := srv.Client()
 	ctx := context.Background()
@@ -601,7 +625,11 @@ func TestInteroperabilityPatterns(t *testing.T) {
 		})).
 		Build()
 
-	defer srv.Stop()
+	defer func() {
+		if err := srv.Stop(); err != nil {
+			t.Logf("Failed to stop server: %v", err)
+		}
+	}()
 
 	testutil.StartServerWithInit(t, srv, "interop-client", "1.0.0")
 
@@ -690,7 +718,11 @@ func TestSpecialCharacterHandling(t *testing.T) {
 		})).
 		Build()
 
-	defer srv.Stop()
+	defer func() {
+		if err := srv.Stop(); err != nil {
+			t.Logf("Failed to stop server: %v", err)
+		}
+	}()
 
 	testutil.StartServerWithInit(t, srv, "unicode-client", "1.0.0")
 
@@ -739,7 +771,11 @@ func TestLineDelimitedJSONStreaming(t *testing.T) {
 		WithSimpleTool("test", "result").
 		Build()
 
-	defer srv.Stop()
+	defer func() {
+		if err := srv.Stop(); err != nil {
+			t.Logf("Failed to stop server: %v", err)
+		}
+	}()
 
 	testutil.StartServerWithInit(t, srv, "streaming-client", "1.0.0")
 
@@ -797,7 +833,11 @@ func TestRealWorldCompatibility(t *testing.T) {
 		})).
 		Build()
 
-	defer srv.Stop()
+	defer func() {
+		if err := srv.Stop(); err != nil {
+			t.Logf("Failed to stop server: %v", err)
+		}
+	}()
 
 	testutil.StartServerWithInit(t, srv, "vscode-mcp-client", "0.1.0")
 
@@ -906,7 +946,11 @@ func TestEdgeCaseHandling(t *testing.T) {
 		})).
 		Build()
 
-	defer srv.Stop()
+	defer func() {
+		if err := srv.Stop(); err != nil {
+			t.Logf("Failed to stop server: %v", err)
+		}
+	}()
 
 	testutil.StartServerWithInit(t, srv, "edge-client", "1.0.0")
 

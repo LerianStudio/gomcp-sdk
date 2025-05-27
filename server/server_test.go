@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/fredcamaral/gomcp-sdk/protocol"
 	"github.com/fredcamaral/gomcp-sdk/transport"
+	"github.com/stretchr/testify/require"
 	"sync"
 	"testing"
 	"time"
@@ -268,7 +269,7 @@ func TestHandleInitialize(t *testing.T) {
 	server := NewServer("test-server", "1.0.0")
 	transport := &mockTransport{}
 	server.SetTransport(transport)
-	server.Start(context.Background())
+	require.NoError(t, server.Start(context.Background()))
 
 	tests := []struct {
 		name           string
@@ -334,7 +335,7 @@ func TestHandleInitialize(t *testing.T) {
 				// Verify result structure
 				resultJSON, _ := json.Marshal(resp.Result)
 				var result protocol.InitializeResult
-				json.Unmarshal(resultJSON, &result)
+				require.NoError(t, json.Unmarshal(resultJSON, &result))
 
 				if result.ProtocolVersion != tt.expectedResult.ProtocolVersion {
 					t.Errorf("Protocol version mismatch: got %s, want %s",
@@ -353,7 +354,7 @@ func TestHandleToolsList(t *testing.T) {
 	server := NewServer("test", "1.0")
 	transport := &mockTransport{}
 	server.SetTransport(transport)
-	server.Start(context.Background())
+	require.NoError(t, server.Start(context.Background()))
 
 	// Add some tools
 	tool1 := protocol.Tool{

@@ -106,7 +106,11 @@ func TestHandlerLoader(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to load configurable handler: %v", err)
 		}
-		defer loader.UnloadHandler("configurable_echo")
+		defer func() {
+			if err := loader.UnloadHandler("configurable_echo"); err != nil {
+				t.Logf("Failed to unload handler: %v", err)
+			}
+		}()
 
 		// Get handler
 		handler, err := loader.GetHandler("configurable_echo")
@@ -243,7 +247,7 @@ func TestSubprocessHandler(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := TestSubprocessHandler(ctx); err != nil {
+	if err := RunSubprocessHandlerExample(ctx); err != nil {
 		t.Errorf("Subprocess handler test failed: %v", err)
 	}
 }

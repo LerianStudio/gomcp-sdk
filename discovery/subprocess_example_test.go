@@ -2,7 +2,6 @@ package discovery
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -20,6 +19,7 @@ func CreateExampleSubprocessHandler(dir string, toolName string) (string, error)
 	scriptContent := `#!/usr/bin/env python3
 import json
 import sys
+import os
 
 def handle_request(request):
     """Handle incoming tool request"""
@@ -99,14 +99,18 @@ func CreateSubprocessHandlerConfig(scriptPath string) *HandlerConfig {
 	}
 }
 
-// ExampleSubprocessHandler demonstrates a subprocess handler
-func ExampleSubprocessHandler(ctx context.Context) error {
+// RunSubprocessHandlerExample demonstrates a subprocess handler
+func RunSubprocessHandlerExample(ctx context.Context) error {
 	// Create temporary directory
 	tmpDir, err := os.MkdirTemp("", "subprocess-test")
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			fmt.Printf("Failed to remove temporary directory: %v\n", err)
+		}
+	}()
 	
 	// Create handler script
 	scriptPath, err := CreateExampleSubprocessHandler(tmpDir, "python")
@@ -127,7 +131,11 @@ func ExampleSubprocessHandler(ctx context.Context) error {
 	if err := loader.LoadHandler(tool, config, "test"); err != nil {
 		return fmt.Errorf("failed to load handler: %w", err)
 	}
-	defer loader.UnloadHandler(tool.Name)
+	defer func() {
+		if err := loader.UnloadHandler(tool.Name); err != nil {
+			fmt.Printf("Failed to unload handler: %v\n", err)
+		}
+	}()
 	
 	// Get and test handler
 	handler, err := loader.GetHandler(tool.Name)

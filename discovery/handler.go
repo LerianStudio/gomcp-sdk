@@ -143,13 +143,19 @@ func (l *HandlerLoader) UnloadHandler(toolName string) error {
 	if handler.Type == HandlerTypeSubprocess && handler.process != nil {
 		// Close pipes
 		if handler.stdin != nil {
-			handler.stdin.Close()
+			if err := handler.stdin.Close(); err != nil {
+				log.Printf("Failed to close stdin for tool %s: %v", toolName, err)
+			}
 		}
 		if handler.stdout != nil {
-			handler.stdout.Close()
+			if err := handler.stdout.Close(); err != nil {
+				log.Printf("Failed to close stdout for tool %s: %v", toolName, err)
+			}
 		}
 		if handler.stderr != nil {
-			handler.stderr.Close()
+			if err := handler.stderr.Close(); err != nil {
+				log.Printf("Failed to close stderr for tool %s: %v", toolName, err)
+			}
 		}
 
 		// Terminate process

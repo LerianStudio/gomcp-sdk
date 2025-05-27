@@ -36,12 +36,12 @@ func TestOpenAIProvider_RetryLogic(t *testing.T) {
 		if retryCount < 3 {
 			// Simulate rate limit error
 			w.WriteHeader(http.StatusTooManyRequests)
-			w.Write([]byte(`{"error": {"message": "Rate limit exceeded", "type": "rate_limit_error"}}`))
+			_, _ = w.Write([]byte(`{"error": {"message": "Rate limit exceeded", "type": "rate_limit_error"}}`))
 			return
 		}
 		// Success on third attempt
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{
+		_, _ = w.Write([]byte(`{
 			"id": "test",
 			"model": "gpt-3.5-turbo",
 			"choices": [{
@@ -97,12 +97,12 @@ func TestAnthropicProvider_RetryLogic(t *testing.T) {
 		if retryCount < 3 {
 			// Simulate server error
 			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte(`{"error": {"type": "overloaded_error", "message": "Service temporarily unavailable"}}`))
+			_, _ = w.Write([]byte(`{"error": {"type": "overloaded_error", "message": "Service temporarily unavailable"}}`))
 			return
 		}
 		// Success on third attempt
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{
+		_, _ = w.Write([]byte(`{
 			"id": "test",
 			"type": "message",
 			"role": "assistant",
@@ -183,7 +183,7 @@ func TestProvider_NonRetryableErrors(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				attemptCount++
 				w.WriteHeader(tt.statusCode)
-				w.Write([]byte(`{"error": {"message": "` + tt.errorMessage + `"}}`))
+				_, _ = w.Write([]byte(`{"error": {"message": "` + tt.errorMessage + `"}}`))
 			}))
 			defer server.Close()
 
@@ -225,7 +225,7 @@ func TestProvider_ContextCancellation(t *testing.T) {
 		// Simulate slow response
 		time.Sleep(100 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"choices": [{"message": {"content": "test"}}]}`))
+		_, _ = w.Write([]byte(`{"choices": [{"message": {"content": "test"}}]}`))
 	}))
 	defer server.Close()
 

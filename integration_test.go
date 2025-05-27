@@ -41,7 +41,11 @@ func TestFullMCPFlow(t *testing.T) {
 		WithPrompt("greeting", "Hello, {{name}}!").
 		Build()
 
-	defer srv.Stop()
+	defer func() {
+		if err := srv.Stop(); err != nil {
+			t.Logf("Failed to stop server: %v", err)
+		}
+	}()
 
 	testutil.StartServerWithInit(t, srv, "test-client", "1.0.0")
 
@@ -225,7 +229,11 @@ func TestConcurrentOperations(t *testing.T) {
 		})).
 		Build()
 
-	defer srv.Stop()
+	defer func() {
+		if err := srv.Stop(); err != nil {
+			t.Logf("Failed to stop server: %v", err)
+		}
+	}()
 
 	testutil.StartServerWithInit(t, srv, "concurrent-client", "1.0.0")
 
@@ -377,7 +385,11 @@ func TestErrorScenarios(t *testing.T) {
 		})).
 		Build()
 
-	defer srv.Stop()
+	defer func() {
+		if err := srv.Stop(); err != nil {
+			t.Logf("Failed to stop server: %v", err)
+		}
+	}()
 
 	testutil.StartServerWithInit(t, srv, "error-client", "1.0.0")
 

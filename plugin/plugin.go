@@ -416,7 +416,12 @@ func (m *PluginManager) LoadFromPath(ctx context.Context, path string, config ma
 	// Load the plugin
 	if err := m.registry.Load(ctx, plugin.Name(), config); err != nil {
 		// Unregister on failure
-		m.registry.Unregister(plugin.Name())
+		if unregErr := m.registry.Unregister(plugin.Name()); unregErr != nil {
+			m.logger.Error("failed to unregister plugin after load failure",
+				"plugin", plugin.Name(),
+				"loadError", err,
+				"unregisterError", unregErr)
+		}
 		return err
 	}
 

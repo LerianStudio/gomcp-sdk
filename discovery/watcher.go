@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/fredcamaral/gomcp-sdk/protocol"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -266,18 +267,26 @@ func (w *PluginWatcher) unregisterPlugin(pluginID string) error {
 		// Unregister tools
 		for _, tool := range manifest.Tools {
 			// Unload handler first
-			w.handlerLoader.UnloadHandler(tool.Name)
-			w.registry.UnregisterTool(tool.Name)
+			if err := w.handlerLoader.UnloadHandler(tool.Name); err != nil {
+				log.Printf("Failed to unload handler for tool %s: %v", tool.Name, err)
+			}
+			if err := w.registry.UnregisterTool(tool.Name); err != nil {
+				log.Printf("Failed to unregister tool %s: %v", tool.Name, err)
+			}
 		}
 
 		// Unregister resources
 		for _, resource := range manifest.Resources {
-			w.registry.UnregisterResource(resource.URI)
+			if err := w.registry.UnregisterResource(resource.URI); err != nil {
+				log.Printf("Failed to unregister resource %s: %v", resource.URI, err)
+			}
 		}
 
 		// Unregister prompts
 		for _, prompt := range manifest.Prompts {
-			w.registry.UnregisterPrompt(prompt.Name)
+			if err := w.registry.UnregisterPrompt(prompt.Name); err != nil {
+				log.Printf("Failed to unregister prompt %s: %v", prompt.Name, err)
+			}
 		}
 	}
 

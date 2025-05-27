@@ -144,7 +144,10 @@ func (h *HealthChecker) HTTPHandlerLive() http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			// Log encoding error - response headers are already sent
+			fmt.Printf("health: failed to encode liveness response: %v\n", err)
+		}
 	}
 }
 
@@ -169,7 +172,10 @@ func (h *HealthChecker) HTTPHandlerReady() http.HandlerFunc {
 		}
 
 		w.WriteHeader(statusCode)
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			// Log encoding error - response headers are already sent
+			fmt.Printf("health: failed to encode readiness response: %v\n", err)
+		}
 	}
 }
 
@@ -201,7 +207,10 @@ func (h *HealthChecker) HTTPHandlerHealth() http.HandlerFunc {
 		}
 
 		w.WriteHeader(statusCode)
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			// Log encoding error - response headers are already sent
+			fmt.Printf("health: failed to encode health response: %v\n", err)
+		}
 	}
 }
 
@@ -265,7 +274,11 @@ func CheckHTTPEndpoint(name, url string, timeout time.Duration) Check {
 				},
 			}
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				fmt.Printf("health: failed to close response body: %v\n", err)
+			}
+		}()
 
 		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			return &Result{

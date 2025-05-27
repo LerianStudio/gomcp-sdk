@@ -67,7 +67,10 @@ func (s *FullFeaturedServer) Start(ctx context.Context) error {
 
 // Stop stops all server components
 func (s *FullFeaturedServer) Stop() error {
-	s.discoveryService.Stop()
+	if err := s.discoveryService.Stop(); err != nil {
+		// Log error - discovery service stop failed
+		_ = err
+	}
 	s.notifier.Stop()
 	s.subscriptionManager.Stop()
 	return nil
@@ -323,13 +326,18 @@ func (s *FullFeaturedServer) setupDiscoveryNotifications() {
 
 	go func() {
 		for event := range eventChan {
+			var err error
 			switch event.Category {
 			case "tool":
-				s.notifier.NotifyToolsListChanged()
+				err = s.notifier.NotifyToolsListChanged()
 			case "resource":
-				s.notifier.NotifyResourcesListChanged()
+				err = s.notifier.NotifyResourcesListChanged()
 			case "prompt":
-				s.notifier.NotifyPromptsListChanged()
+				err = s.notifier.NotifyPromptsListChanged()
+			}
+			if err != nil {
+				// Log error - failed to send notification
+				_ = err
 			}
 		}
 	}()

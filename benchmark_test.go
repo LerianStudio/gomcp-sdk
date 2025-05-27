@@ -162,7 +162,9 @@ func BenchmarkMemoryAllocation(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			data, _ := json.Marshal(req)
 			var decoded protocol.JSONRPCRequest
-			json.Unmarshal(data, &decoded)
+			if err := json.Unmarshal(data, &decoded); err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 
@@ -185,7 +187,9 @@ func BenchmarkMemoryAllocation(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			data, _ := json.Marshal(req)
 			var decoded protocol.JSONRPCRequest
-			json.Unmarshal(data, &decoded)
+			if err := json.Unmarshal(data, &decoded); err != nil {
+				b.Fatal(err)
+			}
 		}
 	})
 }

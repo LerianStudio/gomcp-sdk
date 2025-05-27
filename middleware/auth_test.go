@@ -415,7 +415,10 @@ func BenchmarkAuthMiddleware(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		middleware.Process(ctx, "request", handler)
+		_, err := middleware.Process(ctx, "request", handler)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -434,6 +437,9 @@ func BenchmarkGenerateJWT(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		GenerateJWT(user, config)
+		_, err := GenerateJWT(user, config)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
