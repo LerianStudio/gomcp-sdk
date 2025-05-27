@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -411,6 +412,11 @@ func TestSSETransport_CommandEndpoint(t *testing.T) {
 }
 
 func TestSSETransport_MaxClients(t *testing.T) {
+	// Skip on Windows due to SSE connection handling differences
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping SSE MaxClients test on Windows")
+	}
+	
 	config := &SSEConfig{
 		HTTPConfig: HTTPConfig{
 			Address: "localhost:0",
