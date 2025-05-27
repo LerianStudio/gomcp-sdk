@@ -369,13 +369,13 @@ func (t *SSETransport) broadcastHandler() {
 		}
 		t.clientMu.RUnlock()
 
-		// Send to all clients with a small timeout
+		// Send to all clients
 		for _, client := range clients {
 			select {
 			case client.events <- event:
 				// Event queued
-			case <-time.After(100 * time.Millisecond):
-				// Client not ready or buffer full, skip after timeout
+			default:
+				// Client buffer full, skip
 			}
 		}
 	}

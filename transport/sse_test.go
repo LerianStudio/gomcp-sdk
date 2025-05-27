@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -167,7 +168,8 @@ func TestSSETransport_Broadcast(t *testing.T) {
 		HTTPConfig: HTTPConfig{
 			Address: "localhost:0",
 		},
-		EventPath: "/events",
+		EventPath:       "/events",
+		EventBufferSize: 100, // Increase buffer to prevent drops
 	}
 
 	transport := NewSSETransport(config)
@@ -441,6 +443,10 @@ func TestSSETransport_MaxClients(t *testing.T) {
 		responses[i] = resp
 	}
 
+	// Wait for connections to be fully established
+	time.Sleep(100 * time.Millisecond)
+	assert.Equal(t, 2, transport.ClientCount())
+
 	// Try to connect one more (should fail)
 	resp, err := client.Get(baseURL)
 	require.NoError(t, err)
@@ -580,7 +586,8 @@ func BenchmarkSSETransport_Broadcast(b *testing.B) {
 		HTTPConfig: HTTPConfig{
 			Address: "localhost:0",
 		},
-		EventPath: "/events",
+		EventPath:       "/events",
+		EventBufferSize: 1000, // Large buffer for benchmark
 	}
 
 	transport := NewSSETransport(config)
@@ -596,18 +603,30 @@ func BenchmarkSSETransport_Broadcast(b *testing.B) {
 	addr := transport.Address()
 	baseURL := "http://" + addr + "/events"
 
-	// Connect multiple clients
+	// Connect multiple clients with cancellation
+	clientCtx, clientCancel := context.WithCancel(context.Background())
+	defer clientCancel()
+
 	numClients := 10
+	var wg sync.WaitGroup
 	for i := 0; i < numClients; i++ {
+		wg.Add(1)
 		go func() {
-			resp, err := http.Get(baseURL)
+			defer wg.Done()
+			req, _ := http.NewRequestWithContext(clientCtx, "GET", baseURL, nil)
+			resp, err := http.DefaultClient.Do(req)
 			if err != nil {
 				return
 			}
 			defer resp.Body.Close()
 			scanner := bufio.NewScanner(resp.Body)
 			for scanner.Scan() {
-				// Consume events
+				select {
+				case <-clientCtx.Done():
+					return
+				default:
+					// Consume events
+				}
 			}
 		}()
 	}
@@ -624,6 +643,11 @@ func BenchmarkSSETransport_Broadcast(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		transport.BroadcastEvent("benchmark", message)
 	}
+	b.StopTimer()
+
+	// Cancel clients before stopping transport
+	clientCancel()
+	wg.Wait()
 }
 
 func BenchmarkSSETransport_DirectMessage(b *testing.B) {
