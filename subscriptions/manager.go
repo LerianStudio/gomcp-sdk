@@ -99,7 +99,7 @@ func (m *Manager) Unsubscribe(subscriptionID string) error {
 
 	// Remove from all indices
 	delete(m.subscriptions, subscriptionID)
-	
+
 	// Remove from client index
 	clientSubs := m.byClient[sub.ClientID]
 	m.removeFromSlice(&clientSubs, subscriptionID)
@@ -107,7 +107,7 @@ func (m *Manager) Unsubscribe(subscriptionID string) error {
 	if len(m.byClient[sub.ClientID]) == 0 {
 		delete(m.byClient, sub.ClientID)
 	}
-	
+
 	// Remove from method index
 	methodSubs := m.byMethod[sub.Method]
 	m.removeFromSlice(&methodSubs, subscriptionID)
@@ -242,7 +242,7 @@ func (m *Manager) handleEvent(event Event) {
 		// Check if subscription matches event
 		if m.matchesSubscription(sub, event) {
 			event.SubscriptionID = subID
-			
+
 			// Call handler if registered
 			if handler, exists := m.handlers[method]; exists {
 				go handler(m.ctx, event)
@@ -260,20 +260,20 @@ func (m *Manager) matchesSubscription(sub *Subscription, event Event) bool {
 		if err := json.Unmarshal(sub.Params, &params); err != nil {
 			return false
 		}
-		
+
 		// Check if event is for this resource
 		if changeEvent, ok := event.Data.(*ResourceChangeEvent); ok {
 			return changeEvent.URI == params.URI
 		}
-		
+
 	case "tools/subscribe", "resources/subscribeList", "prompts/subscribe", "roots/subscribe":
 		// List change subscriptions match all events of their type
 		return true
-		
+
 	default:
 		return false
 	}
-	
+
 	return false
 }
 
@@ -304,13 +304,13 @@ func (m *Manager) isValidMethod(method string) bool {
 		"prompts/subscribe",
 		"roots/subscribe",
 	}
-	
+
 	for _, valid := range validMethods {
 		if method == valid {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -361,7 +361,7 @@ func (m *Manager) CleanupInactive(maxInactive time.Duration) int {
 			delete(m.byClient, clientID)
 		}
 	}
-	
+
 	for method, subs := range m.byMethod {
 		if len(subs) == 0 {
 			delete(m.byMethod, method)

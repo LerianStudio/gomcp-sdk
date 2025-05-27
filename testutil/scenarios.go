@@ -58,26 +58,26 @@ func (r *ScenarioRunner) runScenario(t *testing.T, scenario Scenario) {
 	server := NewTestServer("scenario-server", "1.0.0")
 	client := server.Client()
 	assertions := NewAssertions(t)
-	
+
 	// Setup
 	if scenario.setup != nil {
 		if err := scenario.setup(server); err != nil {
 			t.Fatalf("Setup failed: %v", err)
 		}
 	}
-	
+
 	// Start server
 	if err := server.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
 	}
 	defer server.Stop()
-	
+
 	// Initialize
 	ctx := context.Background()
 	if _, err := client.Initialize(ctx, "scenario-client", "1.0.0"); err != nil {
 		t.Fatalf("Failed to initialize: %v", err)
 	}
-	
+
 	// Run steps
 	for _, step := range scenario.steps {
 		t.Run(step.name, func(t *testing.T) {
@@ -86,24 +86,24 @@ func (r *ScenarioRunner) runScenario(t *testing.T, scenario Scenario) {
 			if timeout == 0 {
 				timeout = 5 * time.Second
 			}
-			
+
 			ctx, cancel := context.WithTimeout(context.Background(), timeout)
 			defer cancel()
-			
+
 			// Execute action
 			if step.action != nil {
 				if err := step.action(server, client); err != nil {
 					t.Fatalf("Action failed: %v", err)
 				}
 			}
-			
+
 			// Verify
 			if step.verify != nil {
 				if err := step.verify(server, client, assertions); err != nil {
 					t.Fatalf("Verification failed: %v", err)
 				}
 			}
-			
+
 			// Check context
 			select {
 			case <-ctx.Done():
@@ -114,7 +114,7 @@ func (r *ScenarioRunner) runScenario(t *testing.T, scenario Scenario) {
 			}
 		})
 	}
-	
+
 	// Cleanup
 	if scenario.cleanup != nil {
 		if err := scenario.cleanup(server); err != nil {
@@ -125,12 +125,12 @@ func (r *ScenarioRunner) runScenario(t *testing.T, scenario Scenario) {
 
 // CommonScenarios provides common test scenarios
 var CommonScenarios = struct {
-	BasicToolCall         func(toolName string, expectedResult string) Scenario
-	ErrorHandling         func() Scenario
-	ConcurrentRequests    func(numRequests int) Scenario
-	ResourceReadWrite     func() Scenario
-	PromptGeneration      func() Scenario
-	LargePayloadHandling  func() Scenario
+	BasicToolCall        func(toolName string, expectedResult string) Scenario
+	ErrorHandling        func() Scenario
+	ConcurrentRequests   func(numRequests int) Scenario
+	ResourceReadWrite    func() Scenario
+	PromptGeneration     func() Scenario
+	LargePayloadHandling func() Scenario
 }{
 	BasicToolCall: func(toolName string, expectedResult string) Scenario {
 		return Scenario{
@@ -190,7 +190,7 @@ var CommonScenarios = struct {
 			},
 		}
 	},
-	
+
 	ErrorHandling: func() Scenario {
 		return Scenario{
 			name:        "ErrorHandling",
@@ -204,7 +204,7 @@ var CommonScenarios = struct {
 							Name: "nonexistent",
 						})
 						a.AssertNoError(err)
-						
+
 						resp, err := client.WaitForResponse(ctx, id)
 						a.AssertNoError(err)
 						a.AssertJSONRPCError(resp, protocol.MethodNotFound)
@@ -217,7 +217,7 @@ var CommonScenarios = struct {
 						ctx := context.Background()
 						id, err := client.SendRequest("invalid/method", nil)
 						a.AssertNoError(err)
-						
+
 						resp, err := client.WaitForResponse(ctx, id)
 						a.AssertNoError(err)
 						a.AssertJSONRPCError(resp, protocol.MethodNotFound)
@@ -230,7 +230,7 @@ var CommonScenarios = struct {
 						ctx := context.Background()
 						id, err := client.SendRequest("tools/call", "invalid params")
 						a.AssertNoError(err)
-						
+
 						resp, err := client.WaitForResponse(ctx, id)
 						a.AssertNoError(err)
 						a.AssertJSONRPCError(resp, protocol.InvalidParams)
@@ -240,7 +240,7 @@ var CommonScenarios = struct {
 			},
 		}
 	},
-	
+
 	ConcurrentRequests: func(numRequests int) Scenario {
 		return Scenario{
 			name:        fmt.Sprintf("ConcurrentRequests_%d", numRequests),
@@ -267,7 +267,7 @@ var CommonScenarios = struct {
 					action: func(server *TestServer, client *TestClient) error {
 						// Send multiple requests concurrently
 						errCh := make(chan error, numRequests)
-						
+
 						for i := 0; i < numRequests; i++ {
 							go func(idx int) {
 								_, err := client.CallTool(context.Background(), "echo", map[string]interface{}{
@@ -276,14 +276,14 @@ var CommonScenarios = struct {
 								errCh <- err
 							}(i)
 						}
-						
+
 						// Wait for all requests
 						for i := 0; i < numRequests; i++ {
 							if err := <-errCh; err != nil {
 								return err
 							}
 						}
-						
+
 						return nil
 					},
 					timeout: 10 * time.Second,
@@ -291,7 +291,7 @@ var CommonScenarios = struct {
 			},
 		}
 	},
-	
+
 	ResourceReadWrite: func() Scenario {
 		return Scenario{
 			name:        "ResourceReadWrite",
@@ -308,7 +308,7 @@ var CommonScenarios = struct {
 						protocol.NewContent("Test file contents"),
 					}, nil
 				}))
-				
+
 				server.AddResource(protocol.Resource{
 					URI:      "https://example.com/data.json",
 					Name:     "data.json",
@@ -318,7 +318,7 @@ var CommonScenarios = struct {
 						protocol.NewContent(`{"key": "value"}`),
 					}, nil
 				}))
-				
+
 				return nil
 			},
 			steps: []ScenarioStep{
@@ -328,11 +328,11 @@ var CommonScenarios = struct {
 						ctx := context.Background()
 						id, err := client.SendRequest("resources/list", nil)
 						a.AssertNoError(err)
-						
+
 						resp, err := client.WaitForResponse(ctx, id)
 						a.AssertNoError(err)
 						a.AssertJSONRPCSuccess(resp)
-						
+
 						// TODO: Add resource list parsing and verification
 						return nil
 					},
@@ -345,11 +345,11 @@ var CommonScenarios = struct {
 							"uri": "file:///test.txt",
 						})
 						a.AssertNoError(err)
-						
+
 						resp, err := client.WaitForResponse(ctx, id)
 						a.AssertNoError(err)
 						a.AssertJSONRPCSuccess(resp)
-						
+
 						// TODO: Add content verification
 						return nil
 					},
@@ -357,7 +357,7 @@ var CommonScenarios = struct {
 			},
 		}
 	},
-	
+
 	PromptGeneration: func() Scenario {
 		return Scenario{
 			name:        "PromptGeneration",
@@ -382,17 +382,17 @@ var CommonScenarios = struct {
 				}, PromptHandlerFunc(func(ctx context.Context, args map[string]interface{}) ([]protocol.Content, error) {
 					name, _ := args["name"].(string)
 					style, _ := args["style"].(string)
-					
+
 					greeting := "Hello"
 					if style == "formal" {
 						greeting = "Greetings"
 					}
-					
+
 					return []protocol.Content{
 						protocol.NewContent(fmt.Sprintf("%s, %s!", greeting, name)),
 					}, nil
 				}))
-				
+
 				return nil
 			},
 			steps: []ScenarioStep{
@@ -402,11 +402,11 @@ var CommonScenarios = struct {
 						ctx := context.Background()
 						id, err := client.SendRequest("prompts/list", nil)
 						a.AssertNoError(err)
-						
+
 						resp, err := client.WaitForResponse(ctx, id)
 						a.AssertNoError(err)
 						a.AssertJSONRPCSuccess(resp)
-						
+
 						return nil
 					},
 				},
@@ -422,18 +422,18 @@ var CommonScenarios = struct {
 							},
 						})
 						a.AssertNoError(err)
-						
+
 						resp, err := client.WaitForResponse(ctx, id)
 						a.AssertNoError(err)
 						a.AssertJSONRPCSuccess(resp)
-						
+
 						return nil
 					},
 				},
 			},
 		}
 	},
-	
+
 	LargePayloadHandling: func() Scenario {
 		return Scenario{
 			name:        "LargePayloadHandling",
@@ -452,7 +452,7 @@ var CommonScenarios = struct {
 					data, _ := params["data"].(string)
 					return fmt.Sprintf("Processed %d bytes", len(data)), nil
 				}))
-				
+
 				return nil
 			},
 			steps: []ScenarioStep{
@@ -464,7 +464,7 @@ var CommonScenarios = struct {
 						for i := range largeData {
 							largeData[i] = byte(i % 256)
 						}
-						
+
 						_, err := client.CallTool(context.Background(), "process_data", map[string]interface{}{
 							"data": string(largeData),
 						})

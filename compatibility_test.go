@@ -16,14 +16,14 @@ func TestMCPProtocolCompliance(t *testing.T) {
 		WithResource("test://resource", "test resource", "resource content").
 		WithPrompt("test_prompt", "prompt content").
 		Build()
-	
+
 	defer srv.Stop()
-	
+
 	testutil.StartServerWithInit(t, srv, "test-client", "1.0.0")
-	
+
 	client := srv.Client()
 	ctx := context.Background()
-	
+
 	t.Run("protocol_version", func(t *testing.T) {
 		// Protocol version was already verified during initialization
 		// Just verify we can make a basic request
@@ -31,34 +31,34 @@ func TestMCPProtocolCompliance(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
-		
+
 		resp, err := client.WaitForResponse(ctx, id)
 		if err != nil {
 			t.Fatalf("Failed to get response: %v", err)
 		}
-		
+
 		if resp.JSONRPC != "2.0" {
 			t.Errorf("Expected JSONRPC version 2.0, got %s", resp.JSONRPC)
 		}
 	})
-	
+
 	t.Run("jsonrpc_version", func(t *testing.T) {
 		// All requests and responses must have jsonrpc: "2.0"
 		id, err := client.SendRequest("tools/list", nil)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
-		
+
 		resp, err := client.WaitForResponse(ctx, id)
 		if err != nil {
 			t.Fatalf("Failed to get response: %v", err)
 		}
-		
+
 		if resp.JSONRPC != "2.0" {
 			t.Errorf("Expected JSONRPC version 2.0, got %s", resp.JSONRPC)
 		}
 	})
-	
+
 	t.Run("id_handling", func(t *testing.T) {
 		// Test different ID types
 		testCases := []struct {
@@ -69,18 +69,18 @@ func TestMCPProtocolCompliance(t *testing.T) {
 			{"string_id", "test-id-456"},
 			{"float_id", 789.0},
 		}
-		
+
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				// Skip this test for now - requires raw IO access
 				t.Skip("Test requires raw IO access which is not currently available")
-				
+
 				// Get response
 				resp, err := client.GetNextResponse(ctx)
 				if err != nil {
 					t.Fatalf("Failed to get response: %v", err)
 				}
-				
+
 				// ID in response must match request
 				if fmt.Sprintf("%v", resp.ID) != fmt.Sprintf("%v", tc.id) {
 					t.Errorf("ID mismatch: sent %v, got %v", tc.id, resp.ID)
@@ -95,14 +95,14 @@ func TestJSONRPCCompliance(t *testing.T) {
 	srv := testutil.NewServerBuilder("jsonrpc-server", "1.0.0").
 		WithSimpleTool("echo", "echoed").
 		Build()
-	
+
 	defer srv.Stop()
-	
+
 	testutil.StartServerWithInit(t, srv, "jsonrpc-client", "1.0.0")
-	
+
 	client := srv.Client()
 	ctx := context.Background()
-	
+
 	t.Run("error_codes", func(t *testing.T) {
 		testCases := []struct {
 			name         string
@@ -130,42 +130,42 @@ func TestJSONRPCCompliance(t *testing.T) {
 				expectedCode: protocol.InvalidParams,
 			},
 		}
-		
+
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				// Skip this test for now - requires raw IO access
 				t.Skip("Test requires raw IO access which is not currently available")
-				
+
 				// Get response
 				resp, err := client.GetNextResponse(ctx)
 				if err != nil {
 					t.Fatalf("Failed to get response: %v", err)
 				}
-				
+
 				if resp.Error == nil {
 					t.Fatal("Expected error response")
 				}
-				
+
 				if resp.Error.Code != tc.expectedCode {
 					t.Errorf("Expected error code %d, got %d", tc.expectedCode, resp.Error.Code)
 				}
 			})
 		}
 	})
-	
+
 	t.Run("batch_requests_not_supported", func(t *testing.T) {
 		// Skip this test for now - requires raw IO access
 		t.Skip("Test requires raw IO access which is not currently available")
-		
+
 		resp, err := client.GetNextResponse(ctx)
 		if err != nil {
 			t.Fatalf("Failed to get response: %v", err)
 		}
-		
+
 		if resp.Error == nil {
 			t.Fatal("Expected error for batch request")
 		}
-		
+
 		if resp.Error.Code != protocol.ParseError {
 			t.Errorf("Expected parse error for batch request, got code %d", resp.Error.Code)
 		}
@@ -179,14 +179,14 @@ func TestMethodSignatures(t *testing.T) {
 		WithResource("test://res", "res", "content").
 		WithPrompt("test_prompt", "prompt").
 		Build()
-	
+
 	defer srv.Stop()
-	
+
 	testutil.StartServerWithInit(t, srv, "signature-client", "1.0.0")
-	
+
 	client := srv.Client()
 	ctx := context.Background()
-	
+
 	testCases := []struct {
 		method         string
 		params         interface{}
@@ -218,12 +218,12 @@ func TestMethodSignatures(t *testing.T) {
 				if !ok {
 					t.Fatal("Result is not a map")
 				}
-				
+
 				tools, ok := resultMap["tools"]
 				if !ok {
 					t.Fatal("Result missing 'tools' field")
 				}
-				
+
 				// Should be an array
 				_, ok = tools.([]interface{})
 				if !ok {
@@ -253,12 +253,12 @@ func TestMethodSignatures(t *testing.T) {
 				if !ok {
 					t.Fatal("Result is not a map")
 				}
-				
+
 				resources, ok := resultMap["resources"]
 				if !ok {
 					t.Fatal("Result missing 'resources' field")
 				}
-				
+
 				// Should be an array
 				_, ok = resources.([]interface{})
 				if !ok {
@@ -276,12 +276,12 @@ func TestMethodSignatures(t *testing.T) {
 				if !ok {
 					t.Fatal("Result is not a map")
 				}
-				
+
 				contents, ok := resultMap["contents"]
 				if !ok {
 					t.Fatal("Result missing 'contents' field")
 				}
-				
+
 				// Should be an array
 				_, ok = contents.([]interface{})
 				if !ok {
@@ -297,12 +297,12 @@ func TestMethodSignatures(t *testing.T) {
 				if !ok {
 					t.Fatal("Result is not a map")
 				}
-				
+
 				prompts, ok := resultMap["prompts"]
 				if !ok {
 					t.Fatal("Result missing 'prompts' field")
 				}
-				
+
 				// Should be an array
 				_, ok = prompts.([]interface{})
 				if !ok {
@@ -321,12 +321,12 @@ func TestMethodSignatures(t *testing.T) {
 				if !ok {
 					t.Fatal("Result is not a map")
 				}
-				
+
 				messages, ok := resultMap["messages"]
 				if !ok {
 					t.Fatal("Result missing 'messages' field")
 				}
-				
+
 				// Should be an array
 				_, ok = messages.([]interface{})
 				if !ok {
@@ -335,23 +335,23 @@ func TestMethodSignatures(t *testing.T) {
 			},
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.method, func(t *testing.T) {
 			id, err := client.SendRequest(tc.method, tc.params)
 			if err != nil {
 				t.Fatalf("Failed to send request: %v", err)
 			}
-			
+
 			resp, err := client.WaitForResponse(ctx, id)
 			if err != nil {
 				t.Fatalf("Failed to get response: %v", err)
 			}
-			
+
 			if resp.Error != nil {
 				t.Fatalf("Got error response: %s", resp.Error.Message)
 			}
-			
+
 			tc.validateResult(t, resp.Result)
 		})
 	}
@@ -362,35 +362,35 @@ func TestCapabilitiesHandling(t *testing.T) {
 	srv := testutil.NewServerBuilder("capabilities-server", "1.0.0").
 		WithSimpleTool("tool1", "result1").
 		Build()
-	
+
 	defer srv.Stop()
-	
+
 	testutil.StartServerWithInit(t, srv, "capabilities-client", "1.0.0")
-	
+
 	client := srv.Client()
 	ctx := context.Background()
-	
+
 	t.Run("server_capabilities", func(t *testing.T) {
 		// Initialize again to get capabilities
 		result, err := client.Initialize(ctx, "capabilities-client", "1.0.0")
 		if err != nil {
 			t.Fatalf("Failed to initialize: %v", err)
 		}
-		
+
 		// Check required capabilities structure
 		if result.Capabilities.Tools == nil {
 			t.Error("Tools capability should not be nil")
 		}
-		
+
 		if result.Capabilities.Resources == nil {
 			t.Error("Resources capability should not be nil")
 		}
-		
+
 		if result.Capabilities.Prompts == nil {
 			t.Error("Prompts capability should not be nil")
 		}
 	})
-	
+
 	t.Run("client_capabilities", func(t *testing.T) {
 		// Test with various client capabilities
 		initReq := protocol.InitializeRequest{
@@ -410,21 +410,21 @@ func TestCapabilitiesHandling(t *testing.T) {
 				Version: "2.0.0",
 			},
 		}
-		
+
 		id, err := client.SendRequest("initialize", initReq)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
-		
+
 		resp, err := client.WaitForResponse(ctx, id)
 		if err != nil {
 			t.Fatalf("Failed to get response: %v", err)
 		}
-		
+
 		if resp.Error != nil {
 			t.Fatalf("Initialize failed: %s", resp.Error.Message)
 		}
-		
+
 		// Server should accept any client capabilities
 		data, _ := json.Marshal(resp.Result)
 		var result protocol.InitializeResult
@@ -448,24 +448,24 @@ func TestContentHandling(t *testing.T) {
 			return protocol.NewToolCallResult(), nil
 		})).
 		Build()
-	
+
 	defer srv.Stop()
-	
+
 	testutil.StartServerWithInit(t, srv, "content-client", "1.0.0")
-	
+
 	client := srv.Client()
 	ctx := context.Background()
-	
+
 	t.Run("multiple_content_items", func(t *testing.T) {
 		result, err := client.CallTool(ctx, "multi_content", nil)
 		if err != nil {
 			t.Fatalf("Failed to call tool: %v", err)
 		}
-		
+
 		if len(result.Content) != 3 {
 			t.Errorf("Expected 3 content items, got %d", len(result.Content))
 		}
-		
+
 		// All should be text type
 		for i, content := range result.Content {
 			if content.Type != "text" {
@@ -473,13 +473,13 @@ func TestContentHandling(t *testing.T) {
 			}
 		}
 	})
-	
+
 	t.Run("empty_content", func(t *testing.T) {
 		result, err := client.CallTool(ctx, "empty_content", nil)
 		if err != nil {
 			t.Fatalf("Failed to call tool: %v", err)
 		}
-		
+
 		// Empty content array is valid
 		if len(result.Content) != 0 {
 			t.Errorf("Expected empty content array, got %d items", len(result.Content))
@@ -491,12 +491,12 @@ func TestContentHandling(t *testing.T) {
 func TestStrictJSONParsing(t *testing.T) {
 	srv := testutil.NewServerBuilder("json-server", "1.0.0").
 		Build()
-	
+
 	defer srv.Stop()
-	
+
 	client := srv.Client()
 	ctx := context.Background()
-	
+
 	testCases := []struct {
 		name          string
 		request       string
@@ -546,17 +546,17 @@ func TestStrictJSONParsing(t *testing.T) {
 			description:   "Valid JSON should succeed",
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Skip this test for now - requires raw IO access
 			t.Skip("Test requires raw IO access which is not currently available")
-			
+
 			resp, err := client.GetNextResponse(ctx)
 			if err != nil {
 				t.Fatalf("Failed to get response: %v", err)
 			}
-			
+
 			if tc.shouldSucceed {
 				if resp.Error != nil {
 					t.Errorf("%s: %s", tc.description, resp.Error.Message)
@@ -580,7 +580,7 @@ func TestInteroperabilityPatterns(t *testing.T) {
 			if params == nil {
 				return "no params", nil
 			}
-			
+
 			// Handle different number types
 			if val, ok := params["number"]; ok {
 				switch v := val.(type) {
@@ -596,27 +596,27 @@ func TestInteroperabilityPatterns(t *testing.T) {
 					return fmt.Sprintf("unknown number type: %T", v), nil
 				}
 			}
-			
+
 			return "processed", nil
 		})).
 		Build()
-	
+
 	defer srv.Stop()
-	
+
 	testutil.StartServerWithInit(t, srv, "interop-client", "1.0.0")
-	
+
 	client := srv.Client()
 	ctx := context.Background()
-	
+
 	t.Run("number_handling", func(t *testing.T) {
 		// Different clients might send numbers in different formats
 		numberFormats := []string{
-			`{"number": 42}`,          // Integer
-			`{"number": 42.0}`,        // Float
-			`{"number": 4.2e1}`,       // Scientific notation
+			`{"number": 42}`,               // Integer
+			`{"number": 42.0}`,             // Float
+			`{"number": 4.2e1}`,            // Scientific notation
 			`{"number": 9007199254740992}`, // Large integer (beyond JS safe integer)
 		}
-		
+
 		for _, format := range numberFormats {
 			id, err := client.SendRequest("tools/call", json.RawMessage(
 				fmt.Sprintf(`{"name": "flexible_tool", "arguments": %s}`, format),
@@ -624,18 +624,18 @@ func TestInteroperabilityPatterns(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to send request: %v", err)
 			}
-			
+
 			resp, err := client.WaitForResponse(ctx, id)
 			if err != nil {
 				t.Fatalf("Failed to get response: %v", err)
 			}
-			
+
 			if resp.Error != nil {
 				t.Errorf("Tool call failed for format %s: %s", format, resp.Error.Message)
 			}
 		}
 	})
-	
+
 	t.Run("optional_fields", func(t *testing.T) {
 		// All optional fields should be truly optional
 		minimalRequests := []struct {
@@ -659,19 +659,19 @@ func TestInteroperabilityPatterns(t *testing.T) {
 				params: `{"name": "flexible_tool", "arguments": null}`,
 			},
 		}
-		
+
 		for _, req := range minimalRequests {
 			t.Run(req.name, func(t *testing.T) {
 				id, err := client.SendRequest(req.method, json.RawMessage(req.params))
 				if err != nil {
 					t.Fatalf("Failed to send request: %v", err)
 				}
-				
+
 				resp, err := client.WaitForResponse(ctx, id)
 				if err != nil {
 					t.Fatalf("Failed to get response: %v", err)
 				}
-				
+
 				// Should handle gracefully without error
 				if resp.Error != nil {
 					t.Errorf("Request failed: %s", resp.Error.Message)
@@ -689,14 +689,14 @@ func TestSpecialCharacterHandling(t *testing.T) {
 			return text, nil
 		})).
 		Build()
-	
+
 	defer srv.Stop()
-	
+
 	testutil.StartServerWithInit(t, srv, "unicode-client", "1.0.0")
-	
+
 	client := srv.Client()
 	ctx := context.Background()
-	
+
 	specialStrings := []struct {
 		name string
 		text string
@@ -711,7 +711,7 @@ func TestSpecialCharacterHandling(t *testing.T) {
 		{"null_char", "Before\x00After"},
 		{"mixed", "🎉 Unicode: ñ CJK: 中文 مرحبا \n\t\"quoted\""},
 	}
-	
+
 	for _, tc := range specialStrings {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := client.CallTool(ctx, "echo", map[string]interface{}{
@@ -720,11 +720,11 @@ func TestSpecialCharacterHandling(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to call tool: %v", err)
 			}
-			
+
 			if len(result.Content) != 1 {
 				t.Fatal("Expected one content item")
 			}
-			
+
 			// Should preserve the exact string
 			if result.Content[0].Text != tc.text {
 				t.Errorf("String not preserved correctly\nSent: %q\nGot:  %q", tc.text, result.Content[0].Text)
@@ -738,47 +738,47 @@ func TestLineDelimitedJSONStreaming(t *testing.T) {
 	srv := testutil.NewServerBuilder("streaming-server", "1.0.0").
 		WithSimpleTool("test", "result").
 		Build()
-	
+
 	defer srv.Stop()
-	
+
 	testutil.StartServerWithInit(t, srv, "streaming-client", "1.0.0")
-	
+
 	client := srv.Client()
 	ctx := context.Background()
-	
+
 	t.Run("multiple_requests_single_line", func(t *testing.T) {
 		// Skip this test for now - requires raw IO access
 		t.Skip("Test requires raw IO access which is not currently available")
-		
+
 		// Should get three responses
 		for i := 0; i < 3; i++ {
 			resp, err := client.GetNextResponse(ctx)
 			if err != nil {
 				t.Fatalf("Failed to get response %d: %v", i+1, err)
 			}
-			
+
 			if resp.Error != nil {
 				t.Errorf("Response %d has error: %s", i+1, resp.Error.Message)
 			}
 		}
 	})
-	
+
 	t.Run("request_split_across_lines", func(t *testing.T) {
 		// JSON split across multiple lines should fail
 		// Skip this test for now - requires raw IO access
 		t.Skip("Test requires raw IO access which is not currently available")
-		
+
 		// First line should produce parse error
 		resp, err := client.GetNextResponse(ctx)
 		if err != nil {
 			t.Fatalf("Failed to get response: %v", err)
 		}
-		
+
 		if resp.Error == nil || resp.Error.Code != protocol.ParseError {
 			t.Error("Expected parse error for incomplete JSON")
 		}
 	})
-	
+
 	t.Run("whitespace_handling", func(t *testing.T) {
 		// Skip this test for now - requires raw IO access
 		t.Skip("Test requires raw IO access which is not currently available")
@@ -791,19 +791,19 @@ func TestRealWorldCompatibility(t *testing.T) {
 		WithTool("process", "Processes data", protocol.ToolHandlerFunc(func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 			// Simulate processing
 			return map[string]interface{}{
-				"status": "success",
+				"status":    "success",
 				"processed": params,
 			}, nil
 		})).
 		Build()
-	
+
 	defer srv.Stop()
-	
+
 	testutil.StartServerWithInit(t, srv, "vscode-mcp-client", "0.1.0")
-	
+
 	client := srv.Client()
 	ctx := context.Background()
-	
+
 	t.Run("typescript_style_requests", func(t *testing.T) {
 		// TypeScript clients might send certain patterns
 		id, err := client.SendRequest("tools/call", json.RawMessage(`{
@@ -822,21 +822,21 @@ func TestRealWorldCompatibility(t *testing.T) {
 				}
 			}
 		}`))
-		
+
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
-		
+
 		resp, err := client.WaitForResponse(ctx, id)
 		if err != nil {
 			t.Fatalf("Failed to get response: %v", err)
 		}
-		
+
 		if resp.Error != nil {
 			t.Errorf("Request failed: %s", resp.Error.Message)
 		}
 	})
-	
+
 	t.Run("python_style_requests", func(t *testing.T) {
 		// Python clients might use different conventions
 		pythonStyleParams := map[string]interface{}{
@@ -845,28 +845,28 @@ func TestRealWorldCompatibility(t *testing.T) {
 				"kwargs": map[string]interface{}{
 					"input_data": []interface{}{1, 2, 3, 4, 5},
 					"config": map[string]interface{}{
-						"debug": true,
+						"debug":          true,
 						"max_iterations": 100,
 					},
 				},
 			},
 		}
-		
+
 		id, err := client.SendRequest("tools/call", pythonStyleParams)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
-		
+
 		resp, err := client.WaitForResponse(ctx, id)
 		if err != nil {
 			t.Fatalf("Failed to get response: %v", err)
 		}
-		
+
 		if resp.Error != nil {
 			t.Errorf("Request failed: %s", resp.Error.Message)
 		}
 	})
-	
+
 	t.Run("browser_client_patterns", func(t *testing.T) {
 		// Browser-based clients might have certain limitations
 		// e.g., integer precision issues with large numbers
@@ -874,23 +874,23 @@ func TestRealWorldCompatibility(t *testing.T) {
 			"name": "process",
 			"arguments": map[string]interface{}{
 				"largeInt": 9007199254740991, // MAX_SAFE_INTEGER in JS
-				"float": 0.1 + 0.2,          // Classic JS floating point
+				"float":    0.1 + 0.2,        // Classic JS floating point
 				"nested": map[string]interface{}{
 					"array": []interface{}{true, false, nil},
 				},
 			},
 		}
-		
+
 		id, err := client.SendRequest("tools/call", browserRequest)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
-		
+
 		resp, err := client.WaitForResponse(ctx, id)
 		if err != nil {
 			t.Fatalf("Failed to get response: %v", err)
 		}
-		
+
 		if resp.Error != nil {
 			t.Errorf("Request failed: %s", resp.Error.Message)
 		}
@@ -905,14 +905,14 @@ func TestEdgeCaseHandling(t *testing.T) {
 			return params, nil
 		})).
 		Build()
-	
+
 	defer srv.Stop()
-	
+
 	testutil.StartServerWithInit(t, srv, "edge-client", "1.0.0")
-	
+
 	client := srv.Client()
 	ctx := context.Background()
-	
+
 	edgeCases := []struct {
 		name   string
 		params interface{}
@@ -930,36 +930,36 @@ func TestEdgeCaseHandling(t *testing.T) {
 			params: map[string]interface{}{"array": createLargeArray(1000)},
 		},
 		{
-			name:   "mixed_types",
+			name: "mixed_types",
 			params: map[string]interface{}{
 				"string": "text",
 				"number": 42,
-				"float": 3.14,
-				"bool": true,
-				"null": nil,
-				"array": []interface{}{1, "two", 3.0, true, nil},
+				"float":  3.14,
+				"bool":   true,
+				"null":   nil,
+				"array":  []interface{}{1, "two", 3.0, true, nil},
 				"object": map[string]interface{}{"nested": true},
 			},
 		},
 		{
 			name: "special_json_values",
 			params: map[string]interface{}{
-				"zero": 0,
-				"negative": -1,
-				"empty_array": []interface{}{},
+				"zero":         0,
+				"negative":     -1,
+				"empty_array":  []interface{}{},
 				"empty_object": map[string]interface{}{},
-				"false": false,
+				"false":        false,
 			},
 		},
 	}
-	
+
 	for _, tc := range edgeCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := client.CallTool(ctx, "edge_tool", tc.params.(map[string]interface{}))
 			if err != nil {
 				t.Fatalf("Failed to call tool: %v", err)
 			}
-			
+
 			if result.IsError {
 				t.Errorf("Tool returned error: %v", result.Content)
 			}
@@ -972,13 +972,13 @@ func TestEdgeCaseHandling(t *testing.T) {
 func createDeeplyNested(depth int) map[string]interface{} {
 	result := map[string]interface{}{}
 	current := result
-	
+
 	for i := 0; i < depth; i++ {
 		next := map[string]interface{}{}
 		current[fmt.Sprintf("level_%d", i)] = next
 		current = next
 	}
-	
+
 	current["value"] = "deeply nested value"
 	return result
 }

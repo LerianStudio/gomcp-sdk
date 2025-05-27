@@ -14,10 +14,10 @@ import (
 
 // Common errors
 var (
-	ErrUnauthorized     = errors.New("unauthorized")
-	ErrInvalidToken     = errors.New("invalid token")
-	ErrTokenExpired     = errors.New("token expired")
-	ErrInvalidAPIKey    = errors.New("invalid API key")
+	ErrUnauthorized      = errors.New("unauthorized")
+	ErrInvalidToken      = errors.New("invalid token")
+	ErrTokenExpired      = errors.New("token expired")
+	ErrInvalidAPIKey     = errors.New("invalid API key")
 	ErrMissingAuthHeader = errors.New("missing authorization header")
 )
 
@@ -53,20 +53,20 @@ type User struct {
 // AuthConfig contains configuration for authentication middleware
 type AuthConfig struct {
 	// JWT configuration
-	JWTSecret       string
-	JWTIssuer       string
-	JWTAudience     []string
-	JWTExpiration   time.Duration
-	JWTClockSkew    time.Duration
+	JWTSecret     string
+	JWTIssuer     string
+	JWTAudience   []string
+	JWTExpiration time.Duration
+	JWTClockSkew  time.Duration
 
 	// API Key configuration
-	APIKeys         map[string]*User // API key -> User mapping
-	APIKeyHeader    string           // Header name for API key (default: X-API-Key)
+	APIKeys      map[string]*User // API key -> User mapping
+	APIKeyHeader string           // Header name for API key (default: X-API-Key)
 
 	// General configuration
-	RequireAuth     bool             // Whether authentication is required
-	AllowedMethods  []AuthMethod     // Allowed authentication methods
-	Logger          *slog.Logger
+	RequireAuth    bool         // Whether authentication is required
+	AllowedMethods []AuthMethod // Allowed authentication methods
+	Logger         *slog.Logger
 }
 
 // DefaultAuthConfig returns a default authentication configuration
@@ -101,7 +101,7 @@ func NewAuthMiddleware(config *AuthConfig) *AuthMiddleware {
 	if len(config.AllowedMethods) == 0 {
 		config.AllowedMethods = []AuthMethod{AuthMethodJWT, AuthMethodAPIKey}
 	}
-	
+
 	return &AuthMiddleware{
 		config: config,
 	}
@@ -113,10 +113,10 @@ func (m *AuthMiddleware) Process(ctx context.Context, request interface{}, next 
 	var user *User
 	var authMethod AuthMethod
 	var err error
-	
+
 	// Extract authentication information from context
 	authHeader := m.extractAuthHeader(ctx)
-	
+
 	// Try JWT authentication
 	if m.isMethodAllowed(AuthMethodJWT) && strings.HasPrefix(authHeader, "Bearer ") {
 		user, err = m.authenticateJWT(ctx, strings.TrimPrefix(authHeader, "Bearer "))
@@ -124,7 +124,7 @@ func (m *AuthMiddleware) Process(ctx context.Context, request interface{}, next 
 			authMethod = AuthMethodJWT
 		}
 	}
-	
+
 	// Try API key authentication
 	if user == nil && m.isMethodAllowed(AuthMethodAPIKey) {
 		apiKey := m.extractAPIKey(ctx)
@@ -135,7 +135,7 @@ func (m *AuthMiddleware) Process(ctx context.Context, request interface{}, next 
 			}
 		}
 	}
-	
+
 	// Check if authentication was successful
 	if user == nil && m.config.RequireAuth {
 		// Determine the appropriate error
@@ -146,17 +146,17 @@ func (m *AuthMiddleware) Process(ctx context.Context, request interface{}, next 
 		m.config.Logger.WarnContext(ctx, "authentication failed", "error", err)
 		return nil, ErrUnauthorized
 	}
-	
+
 	// Add user and auth method to context
 	if user != nil {
 		ctx = context.WithValue(ctx, ContextKeyUser, user)
 		ctx = context.WithValue(ctx, ContextKeyAuthMethod, authMethod)
-		
+
 		m.config.Logger.InfoContext(ctx, "authenticated request",
 			"user_id", user.ID,
 			"method", authMethod)
 	}
-	
+
 	// Call the next handler
 	return next(ctx, request)
 }
@@ -171,35 +171,32 @@ func (m *AuthMiddleware) authenticateJWT(ctx context.Context, tokenString string
 		}
 		return []byte(m.config.JWTSecret), nil
 	})
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse token: %w", err)
 	}
-	
+
 	// Check if token is valid
 	if !token.Valid {
 		return nil, ErrInvalidToken
 	}
-	
+
 	// Extract claims
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
 		return nil, fmt.Errorf("invalid claims format")
 	}
-	
-	// Store claims in context
-	ctx = context.WithValue(ctx, ContextKeyTokenClaims, claims)
-	
+
 	// Validate standard claims
 	if err := m.validateClaims(claims); err != nil {
 		return nil, err
 	}
-	
+
 	// Extract user information from claims
 	user := &User{
 		Metadata: make(map[string]interface{}),
 	}
-	
+
 	// Extract standard fields
 	if sub, ok := claims["sub"].(string); ok {
 		user.ID = sub
@@ -210,7 +207,7 @@ func (m *AuthMiddleware) authenticateJWT(ctx context.Context, tokenString string
 	if email, ok := claims["email"].(string); ok {
 		user.Email = email
 	}
-	
+
 	// Extract roles
 	if rolesInterface, ok := claims["roles"].([]interface{}); ok {
 		roles := make([]string, 0, len(rolesInterface))
@@ -221,15 +218,15 @@ func (m *AuthMiddleware) authenticateJWT(ctx context.Context, tokenString string
 		}
 		user.Roles = roles
 	}
-	
+
 	// Store additional claims as metadata
 	for key, value := range claims {
 		if key != "sub" && key != "username" && key != "email" && key != "roles" &&
-		   key != "iss" && key != "aud" && key != "exp" && key != "nbf" && key != "iat" {
+			key != "iss" && key != "aud" && key != "exp" && key != "nbf" && key != "iat" {
 			user.Metadata[key] = value
 		}
 	}
-	
+
 	return user, nil
 }
 
@@ -241,14 +238,14 @@ func (m *AuthMiddleware) validateClaims(claims jwt.MapClaims) error {
 			return fmt.Errorf("invalid issuer")
 		}
 	}
-	
+
 	// Validate audience
 	if len(m.config.JWTAudience) > 0 {
 		audClaim, ok := claims["aud"]
 		if !ok {
 			return fmt.Errorf("missing audience claim")
 		}
-		
+
 		// Handle both string and []string audience claims
 		var audiences []string
 		switch v := audClaim.(type) {
@@ -263,7 +260,7 @@ func (m *AuthMiddleware) validateClaims(claims jwt.MapClaims) error {
 		default:
 			return fmt.Errorf("invalid audience claim format")
 		}
-		
+
 		// Check if any configured audience matches
 		found := false
 		for _, configAud := range m.config.JWTAudience {
@@ -281,7 +278,7 @@ func (m *AuthMiddleware) validateClaims(claims jwt.MapClaims) error {
 			return fmt.Errorf("invalid audience")
 		}
 	}
-	
+
 	return nil
 }
 
@@ -293,7 +290,7 @@ func (m *AuthMiddleware) authenticateAPIKey(ctx context.Context, apiKey string) 
 			return user, nil
 		}
 	}
-	
+
 	return nil, ErrInvalidAPIKey
 }
 
@@ -317,13 +314,13 @@ func (m *AuthMiddleware) extractAPIKey(ctx context.Context) string {
 			return keyStr
 		}
 	}
-	
+
 	// Check Authorization header for API key
 	auth := m.extractAuthHeader(ctx)
 	if strings.HasPrefix(auth, "ApiKey ") {
 		return strings.TrimPrefix(auth, "ApiKey ")
 	}
-	
+
 	return ""
 }
 
@@ -342,7 +339,7 @@ func (m *AuthMiddleware) isMethodAllowed(method AuthMethod) bool {
 // GenerateJWT generates a JWT token for a user
 func GenerateJWT(user *User, config *AuthConfig) (string, error) {
 	now := time.Now()
-	
+
 	// Create claims
 	claims := jwt.MapClaims{
 		"sub":      user.ID,
@@ -352,25 +349,25 @@ func GenerateJWT(user *User, config *AuthConfig) (string, error) {
 		"iat":      now.Unix(),
 		"exp":      now.Add(config.JWTExpiration).Unix(),
 	}
-	
+
 	// Add issuer if configured
 	if config.JWTIssuer != "" {
 		claims["iss"] = config.JWTIssuer
 	}
-	
+
 	// Add audience if configured
 	if len(config.JWTAudience) > 0 {
 		claims["aud"] = config.JWTAudience
 	}
-	
+
 	// Add metadata
 	for key, value := range user.Metadata {
 		claims[key] = value
 	}
-	
+
 	// Create token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	
+
 	// Sign token
 	return token.SignedString([]byte(config.JWTSecret))
 }

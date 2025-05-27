@@ -117,7 +117,7 @@ func (a *Assertions) AssertNotNil(value interface{}, msgAndArgs ...interface{}) 
 // AssertJSONRPCSuccess asserts that a JSON-RPC response is successful
 func (a *Assertions) AssertJSONRPCSuccess(resp *protocol.JSONRPCResponse, msgAndArgs ...interface{}) {
 	a.t.Helper()
-	
+
 	if resp == nil {
 		msg := "Expected response but got nil"
 		if len(msgAndArgs) > 0 {
@@ -125,7 +125,7 @@ func (a *Assertions) AssertJSONRPCSuccess(resp *protocol.JSONRPCResponse, msgAnd
 		}
 		a.t.Fatal(msg)
 	}
-	
+
 	if resp.Error != nil {
 		msg := fmt.Sprintf("Expected successful response but got error: %s", resp.Error.Message)
 		if len(msgAndArgs) > 0 {
@@ -133,7 +133,7 @@ func (a *Assertions) AssertJSONRPCSuccess(resp *protocol.JSONRPCResponse, msgAnd
 		}
 		a.t.Fatal(msg)
 	}
-	
+
 	if resp.Result == nil {
 		msg := "Expected result in response but got nil"
 		if len(msgAndArgs) > 0 {
@@ -146,7 +146,7 @@ func (a *Assertions) AssertJSONRPCSuccess(resp *protocol.JSONRPCResponse, msgAnd
 // AssertJSONRPCError asserts that a JSON-RPC response has an error
 func (a *Assertions) AssertJSONRPCError(resp *protocol.JSONRPCResponse, expectedCode int, msgAndArgs ...interface{}) {
 	a.t.Helper()
-	
+
 	if resp == nil {
 		msg := "Expected response but got nil"
 		if len(msgAndArgs) > 0 {
@@ -154,7 +154,7 @@ func (a *Assertions) AssertJSONRPCError(resp *protocol.JSONRPCResponse, expected
 		}
 		a.t.Fatal(msg)
 	}
-	
+
 	if resp.Error == nil {
 		msg := "Expected error response but got successful response"
 		if len(msgAndArgs) > 0 {
@@ -162,7 +162,7 @@ func (a *Assertions) AssertJSONRPCError(resp *protocol.JSONRPCResponse, expected
 		}
 		a.t.Fatal(msg)
 	}
-	
+
 	if resp.Error.Code != expectedCode {
 		msg := fmt.Sprintf("Expected error code %d but got %d", expectedCode, resp.Error.Code)
 		if len(msgAndArgs) > 0 {
@@ -175,7 +175,7 @@ func (a *Assertions) AssertJSONRPCError(resp *protocol.JSONRPCResponse, expected
 // AssertToolCallSuccess asserts that a tool call result is successful
 func (a *Assertions) AssertToolCallSuccess(result *protocol.ToolCallResult, msgAndArgs ...interface{}) {
 	a.t.Helper()
-	
+
 	if result == nil {
 		msg := "Expected tool call result but got nil"
 		if len(msgAndArgs) > 0 {
@@ -183,7 +183,7 @@ func (a *Assertions) AssertToolCallSuccess(result *protocol.ToolCallResult, msgA
 		}
 		a.t.Fatal(msg)
 	}
-	
+
 	if result.IsError {
 		msg := "Expected successful tool call but got error"
 		if len(msgAndArgs) > 0 {
@@ -199,7 +199,7 @@ func (a *Assertions) AssertToolCallSuccess(result *protocol.ToolCallResult, msgA
 // AssertToolCallError asserts that a tool call result is an error
 func (a *Assertions) AssertToolCallError(result *protocol.ToolCallResult, msgAndArgs ...interface{}) {
 	a.t.Helper()
-	
+
 	if result == nil {
 		msg := "Expected tool call result but got nil"
 		if len(msgAndArgs) > 0 {
@@ -207,7 +207,7 @@ func (a *Assertions) AssertToolCallError(result *protocol.ToolCallResult, msgAnd
 		}
 		a.t.Fatal(msg)
 	}
-	
+
 	if !result.IsError {
 		msg := "Expected tool call error but got successful result"
 		if len(msgAndArgs) > 0 {
@@ -220,7 +220,7 @@ func (a *Assertions) AssertToolCallError(result *protocol.ToolCallResult, msgAnd
 // AssertContentEqual asserts that two content slices are equal
 func (a *Assertions) AssertContentEqual(expected, actual []protocol.Content, msgAndArgs ...interface{}) {
 	a.t.Helper()
-	
+
 	if len(expected) != len(actual) {
 		msg := fmt.Sprintf("Expected %d content items but got %d", len(expected), len(actual))
 		if len(msgAndArgs) > 0 {
@@ -228,7 +228,7 @@ func (a *Assertions) AssertContentEqual(expected, actual []protocol.Content, msg
 		}
 		a.t.Fatal(msg)
 	}
-	
+
 	for i := range expected {
 		if expected[i].Type != actual[i].Type {
 			msg := fmt.Sprintf("Content[%d] type mismatch: expected %s but got %s", i, expected[i].Type, actual[i].Type)
@@ -237,7 +237,7 @@ func (a *Assertions) AssertContentEqual(expected, actual []protocol.Content, msg
 			}
 			a.t.Fatal(msg)
 		}
-		
+
 		if expected[i].Text != actual[i].Text {
 			msg := fmt.Sprintf("Content[%d] text mismatch: expected %s but got %s", i, expected[i].Text, actual[i].Text)
 			if len(msgAndArgs) > 0 {
@@ -282,10 +282,10 @@ func (m *ResponseMatcher) ResultMatches(expected interface{}) *ResponseMatcher {
 	// Marshal both to JSON for comparison
 	expectedJSON, err := json.Marshal(expected)
 	m.a.AssertNoError(err, "Failed to marshal expected result")
-	
+
 	actualJSON, err := json.Marshal(m.resp.Result)
 	m.a.AssertNoError(err, "Failed to marshal actual result")
-	
+
 	m.a.AssertEqual(string(expectedJSON), string(actualJSON), "Result mismatch")
 	return m
 }
@@ -296,12 +296,12 @@ func (m *ResponseMatcher) ResultContains(key string, value interface{}) *Respons
 	if !ok {
 		m.a.t.Fatal("Result is not a map")
 	}
-	
+
 	actual, exists := resultMap[key]
 	if !exists {
 		m.a.t.Fatalf("Result does not contain key %s", key)
 	}
-	
+
 	m.a.AssertEqual(value, actual, "Result field %s mismatch", key)
 	return m
 }

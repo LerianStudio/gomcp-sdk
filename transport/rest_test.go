@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fredcamaral/gomcp-sdk/protocol"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/fredcamaral/gomcp-sdk/protocol"
 )
 
 func TestRESTTransport_StartStop(t *testing.T) {
@@ -48,7 +48,7 @@ func TestRESTTransport_ToolsEndpoint(t *testing.T) {
 	}
 
 	transport := NewRESTTransport(config)
-	
+
 	handler := &mockHandler{
 		handleFunc: func(ctx context.Context, req *protocol.JSONRPCRequest) *protocol.JSONRPCResponse {
 			switch req.Method {
@@ -113,7 +113,7 @@ func TestRESTTransport_ToolsEndpoint(t *testing.T) {
 
 		tools := result["tools"].([]interface{})
 		assert.Len(t, tools, 1)
-		
+
 		tool := tools[0].(map[string]interface{})
 		assert.Equal(t, "test_tool", tool["name"])
 	})
@@ -122,7 +122,7 @@ func TestRESTTransport_ToolsEndpoint(t *testing.T) {
 		args := map[string]interface{}{
 			"param1": "value1",
 		}
-		
+
 		body, _ := json.Marshal(args)
 		resp, err := client.Post(baseURL+"/tools/test_tool", "application/json", bytes.NewReader(body))
 		require.NoError(t, err)
@@ -136,7 +136,7 @@ func TestRESTTransport_ToolsEndpoint(t *testing.T) {
 
 		content := result["content"].([]interface{})
 		assert.Len(t, content, 1)
-		
+
 		item := content[0].(map[string]interface{})
 		assert.Equal(t, "Tool test_tool called", item["text"])
 	})
@@ -159,7 +159,7 @@ func TestRESTTransport_ResourcesEndpoint(t *testing.T) {
 	}
 
 	transport := NewRESTTransport(config)
-	
+
 	handler := &mockHandler{
 		handleFunc: func(ctx context.Context, req *protocol.JSONRPCRequest) *protocol.JSONRPCResponse {
 			switch req.Method {
@@ -240,7 +240,7 @@ func TestRESTTransport_ResourcesEndpoint(t *testing.T) {
 
 		contents := result["contents"].([]interface{})
 		assert.Len(t, contents, 1)
-		
+
 		content := contents[0].(map[string]interface{})
 		assert.Equal(t, "Resource content", content["text"])
 	})
@@ -248,7 +248,7 @@ func TestRESTTransport_ResourcesEndpoint(t *testing.T) {
 
 func TestRESTTransport_Authentication(t *testing.T) {
 	apiKey := "test-api-key-123"
-	
+
 	config := &RESTConfig{
 		HTTPConfig: HTTPConfig{
 			Address: "localhost:0",
@@ -357,13 +357,13 @@ func TestRESTTransport_ErrorMapping(t *testing.T) {
 	}
 
 	transport := NewRESTTransport(config)
-	
+
 	handler := &mockHandler{
 		handleFunc: func(ctx context.Context, req *protocol.JSONRPCRequest) *protocol.JSONRPCResponse {
 			// Return different error codes based on tool name
 			var errorCode int
 			var message string
-			
+
 			if req.Method == "tools/call" {
 				params, ok := req.Params.(map[string]interface{})
 				if ok {
@@ -393,7 +393,7 @@ func TestRESTTransport_ErrorMapping(t *testing.T) {
 				errorCode = protocol.InternalError
 				message = "Internal error"
 			}
-			
+
 			return &protocol.JSONRPCResponse{
 				JSONRPC: "2.0",
 				ID:      req.ID,
@@ -515,10 +515,10 @@ func TestRESTTransport_OpenAPIDocumentation(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, "3.0.0", spec["openapi"])
-		
+
 		info := spec["info"].(map[string]interface{})
 		assert.Equal(t, "MCP REST API", info["title"])
-		
+
 		paths := spec["paths"].(map[string]interface{})
 		assert.NotNil(t, paths["/tools"])
 		assert.NotNil(t, paths["/health"])
@@ -563,7 +563,7 @@ func BenchmarkRESTTransport_ToolCall(b *testing.B) {
 
 	addr := transport.Address()
 	baseURL := "http://" + addr + "/api/v1"
-	
+
 	client := &http.Client{
 		Timeout: 5 * time.Second,
 		Transport: &http.Transport{

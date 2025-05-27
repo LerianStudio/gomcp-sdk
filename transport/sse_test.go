@@ -330,7 +330,7 @@ func TestSSETransport_CommandEndpoint(t *testing.T) {
 		var jsonResp protocol.JSONRPCResponse
 		err = json.NewDecoder(resp.Body).Decode(&jsonResp)
 		require.NoError(t, err)
-		
+
 		// Compare IDs handling JSON number conversion
 		switch expected := req.ID.(type) {
 		case int:
@@ -531,7 +531,10 @@ func TestSSETransport_EventBuffering(t *testing.T) {
 	baseURL := "http://" + addr + "/events"
 
 	go func() {
-		resp, _ := http.Get(baseURL)
+		resp, err := http.Get(baseURL)
+		if err != nil {
+			return
+		}
 		defer resp.Body.Close()
 		time.Sleep(5 * time.Second) // Keep connection open
 	}()
@@ -584,7 +587,10 @@ func BenchmarkSSETransport_Broadcast(b *testing.B) {
 	numClients := 10
 	for i := 0; i < numClients; i++ {
 		go func() {
-			resp, _ := http.Get(baseURL)
+			resp, err := http.Get(baseURL)
+			if err != nil {
+				return
+			}
 			defer resp.Body.Close()
 			scanner := bufio.NewScanner(resp.Body)
 			for scanner.Scan() {
@@ -631,7 +637,10 @@ func BenchmarkSSETransport_DirectMessage(b *testing.B) {
 
 	clientConnected := make(chan string)
 	go func() {
-		resp, _ := http.Get(baseURL)
+		resp, err := http.Get(baseURL)
+		if err != nil {
+			return
+		}
 		defer resp.Body.Close()
 		scanner := bufio.NewScanner(resp.Body)
 

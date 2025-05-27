@@ -129,7 +129,7 @@ func (t *Tracer) TraceRequest(ctx context.Context, method string, attrs ...attri
 		attribute.String("mcp.protocol", "2.0"),
 	}
 	attrs = append(defaultAttrs, attrs...)
-	
+
 	return t.tracer.Start(ctx, fmt.Sprintf("MCP %s", method),
 		trace.WithSpanKind(trace.SpanKindServer),
 		trace.WithAttributes(attrs...),
@@ -143,7 +143,7 @@ func (t *Tracer) TraceToolExecution(ctx context.Context, toolName string, attrs 
 		attribute.String("mcp.operation", "tool_execution"),
 	}
 	attrs = append(defaultAttrs, attrs...)
-	
+
 	return t.tracer.Start(ctx, fmt.Sprintf("Tool: %s", toolName),
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(attrs...),
@@ -157,7 +157,7 @@ func (t *Tracer) TraceResourceOperation(ctx context.Context, operation, resource
 		attribute.String("mcp.resource.type", resourceType),
 	}
 	attrs = append(defaultAttrs, attrs...)
-	
+
 	return t.tracer.Start(ctx, fmt.Sprintf("Resource %s: %s", operation, resourceType),
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(attrs...),
@@ -170,7 +170,7 @@ func (t *Tracer) TracePromptOperation(ctx context.Context, operation string, att
 		attribute.String("mcp.prompt.operation", operation),
 	}
 	attrs = append(defaultAttrs, attrs...)
-	
+
 	return t.tracer.Start(ctx, fmt.Sprintf("Prompt: %s", operation),
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(attrs...),

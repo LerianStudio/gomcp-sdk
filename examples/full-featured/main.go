@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"github.com/fredcamaral/gomcp-sdk/protocol"
 	"github.com/fredcamaral/gomcp-sdk/roots"
 	"github.com/fredcamaral/gomcp-sdk/server"
 	"github.com/fredcamaral/gomcp-sdk/transport"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,7 +17,7 @@ import (
 func main() {
 	// Create an extended MCP server (with sampling and roots)
 	srv := server.NewExtendedServer("MCP Full Featured Demo", "1.0.0")
-	
+
 	// Add some demo tools
 	srv.AddTool(
 		protocol.Tool{
@@ -42,7 +42,7 @@ func main() {
 			return protocol.NewToolCallResult(protocol.NewContent("Echo: " + message)), nil
 		}),
 	)
-	
+
 	// Add a demo resource
 	srv.AddResource(
 		protocol.Resource{
@@ -53,7 +53,7 @@ func main() {
 		},
 		&demoResourceHandler{},
 	)
-	
+
 	// Add a demo prompt
 	srv.AddPrompt(
 		protocol.Prompt{
@@ -74,17 +74,17 @@ func main() {
 		},
 		&demoPromptHandler{},
 	)
-	
+
 	// Add custom roots
 	srv.AddRoot(roots.Root{
 		URI:         "demo://workspace",
 		Name:        "Demo Workspace",
 		Description: "Virtual workspace for demo purposes",
 	})
-	
+
 	// Set up transport based on environment
 	var t transport.Transport
-	
+
 	if os.Getenv("MCP_TRANSPORT") == "stdio" {
 		log.Println("Starting MCP server with stdio transport...")
 		t = transport.NewStdioTransport()
@@ -94,13 +94,13 @@ func main() {
 		if port == "" {
 			port = "3000"
 		}
-		
+
 		log.Printf("Starting MCP server on http://localhost:%s", port)
 		log.Println("Available endpoints:")
 		log.Println("  POST /rpc - JSON-RPC endpoint")
 		log.Println("  GET /sse - Server-sent events endpoint")
 		log.Println("  WS /ws - WebSocket endpoint")
-		
+
 		httpConfig := &transport.HTTPConfig{
 			Address:        ":" + port,
 			Path:           "/rpc",
@@ -108,33 +108,33 @@ func main() {
 			AllowedOrigins: []string{"*"},
 		}
 		httpTransport := transport.NewHTTPTransport(httpConfig)
-		
+
 		t = httpTransport
 	}
-	
+
 	srv.SetTransport(t)
-	
+
 	// Start server
 	ctx := context.Background()
-	
+
 	// Start discovery watcher if plugin path is set
 	if pluginPath := os.Getenv("MCP_PLUGIN_PATH"); pluginPath != "" {
 		log.Printf("Watching for plugins in: %s", pluginPath)
 		// This would be integrated into the full-featured server
 		// For now, we'll skip the actual implementation
 	}
-	
+
 	// Run server
 	log.Println("Starting server...")
 	if err := srv.Start(ctx); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
-	
+
 	// Keep server running (wait for interrupt)
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	<-sigChan
-	
+
 	log.Println("Shutting down...")
 }
 
@@ -152,11 +152,11 @@ type demoPromptHandler struct{}
 func (h *demoPromptHandler) Handle(ctx context.Context, args map[string]interface{}) ([]protocol.Content, error) {
 	name, _ := args["name"].(string)
 	style, _ := args["style"].(string)
-	
+
 	if name == "" {
 		name = "Friend"
 	}
-	
+
 	var greeting string
 	switch style {
 	case "formal":
@@ -166,6 +166,6 @@ func (h *demoPromptHandler) Handle(ctx context.Context, args map[string]interfac
 	default:
 		greeting = fmt.Sprintf("Hello, %s!", name)
 	}
-	
+
 	return []protocol.Content{protocol.NewContent(greeting)}, nil
 }

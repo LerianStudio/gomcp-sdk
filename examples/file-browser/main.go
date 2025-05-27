@@ -26,7 +26,7 @@ import (
 
 const (
 	// Security limits
-	maxFileSize = 10 * 1024 * 1024 // 10MB
+	maxFileSize      = 10 * 1024 * 1024 // 10MB
 	maxSearchResults = 100
 )
 
@@ -66,7 +66,7 @@ func main() {
 	// Create stdio transport
 	stdioTransport := transport.NewStdioTransport()
 	server.SetTransport(stdioTransport)
-	
+
 	// Start server
 	ctx := context.Background()
 	log.Println("File Browser MCP server starting...")
@@ -81,8 +81,8 @@ func registerListTool(server *server.Server, config *Config) {
 		"list_files",
 		"List files in a directory",
 		mcp.ObjectSchema("List parameters", map[string]interface{}{
-			"path": mcp.StringParam("Directory path (relative to base)", true),
-			"pattern": mcp.StringParam("File pattern to match (e.g., *.txt)", false),
+			"path":      mcp.StringParam("Directory path (relative to base)", true),
+			"pattern":   mcp.StringParam("File pattern to match (e.g., *.txt)", false),
 			"recursive": mcp.BooleanParam("Search recursively", false),
 		}, []string{"path"}),
 	)
@@ -161,7 +161,7 @@ func registerReadTool(server *server.Server, config *Config) {
 		"read_file",
 		"Read the contents of a file",
 		mcp.ObjectSchema("Read parameters", map[string]interface{}{
-			"path": mcp.StringParam("File path to read", true),
+			"path":     mcp.StringParam("File path to read", true),
 			"encoding": mcp.StringParam("File encoding (default: utf-8)", false),
 		}, []string{"path"}),
 	)
@@ -201,9 +201,9 @@ func registerReadTool(server *server.Server, config *Config) {
 		}
 
 		return map[string]interface{}{
-			"content": string(content),
-			"path":    path,
-			"size":    info.Size(),
+			"content":  string(content),
+			"path":     path,
+			"size":     info.Size(),
 			"modified": info.ModTime().Format(time.RFC3339),
 		}, nil
 	})
@@ -217,9 +217,9 @@ func registerSearchTool(server *server.Server, config *Config) {
 		"search_files",
 		"Search for files containing specific text",
 		mcp.ObjectSchema("Search parameters", map[string]interface{}{
-			"query": mcp.StringParam("Text to search for", true),
-			"path": mcp.StringParam("Directory to search in", false),
-			"filePattern": mcp.StringParam("File pattern (e.g., *.txt)", false),
+			"query":         mcp.StringParam("Text to search for", true),
+			"path":          mcp.StringParam("Directory to search in", false),
+			"filePattern":   mcp.StringParam("File pattern (e.g., *.txt)", false),
 			"caseSensitive": mcp.BooleanParam("Case sensitive search", false),
 			"maxResults": map[string]interface{}{
 				"type":        "integer",
@@ -284,23 +284,23 @@ func registerSearchTool(server *server.Server, config *Config) {
 
 			if strings.Contains(searchContent, query) {
 				relPath, _ := filepath.Rel(config.BasePath, filePath)
-				
+
 				// Find matching lines
 				lines := strings.Split(string(content), "\n")
 				var matches []map[string]interface{}
-				
+
 				for i, line := range lines {
 					searchLine := line
 					if !caseSensitive {
 						searchLine = strings.ToLower(line)
 					}
-					
+
 					if strings.Contains(searchLine, query) {
 						matches = append(matches, map[string]interface{}{
 							"line": i + 1,
 							"text": strings.TrimSpace(line),
 						})
-						
+
 						if len(matches) >= 5 { // Limit matches per file
 							break
 						}
@@ -357,12 +357,12 @@ func registerInfoTool(server *server.Server, config *Config) {
 		}
 
 		result := map[string]interface{}{
-			"path":         path,
-			"name":         info.Name(),
-			"size":         info.Size(),
-			"isDirectory":  info.IsDir(),
-			"permissions":  info.Mode().String(),
-			"modified":     info.ModTime().Format(time.RFC3339),
+			"path":        path,
+			"name":        info.Name(),
+			"size":        info.Size(),
+			"isDirectory": info.IsDir(),
+			"permissions": info.Mode().String(),
+			"modified":    info.ModTime().Format(time.RFC3339),
 		}
 
 		if info.IsDir() {
@@ -405,7 +405,7 @@ func registerFileResource(server *server.Server, config *Config) {
 	handler := mcp.ResourceHandlerFunc(func(ctx context.Context, uri string) ([]protocol.Content, error) {
 		// Extract path from URI
 		path := strings.TrimPrefix(uri, "file:///")
-		
+
 		// Validate path
 		fullPath, err := validatePath(config, path)
 		if err != nil {
@@ -439,7 +439,7 @@ func registerFileResource(server *server.Server, config *Config) {
 func validatePath(config *Config, path string) (string, error) {
 	// Clean the path
 	cleanPath := filepath.Clean(path)
-	
+
 	// Resolve to absolute path
 	fullPath := filepath.Join(config.BasePath, cleanPath)
 	absPath, err := filepath.Abs(fullPath)

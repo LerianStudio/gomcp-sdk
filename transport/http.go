@@ -201,7 +201,7 @@ func (t *HTTPTransport) handleRequest(w http.ResponseWriter, r *http.Request) {
 // writeResponse writes a JSON-RPC response
 func (t *HTTPTransport) writeResponse(w http.ResponseWriter, resp *protocol.JSONRPCResponse) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	// Add custom headers
 	for k, v := range t.config.CustomHeaders {
 		w.Header().Set(k, v)
@@ -239,7 +239,7 @@ func (t *HTTPTransport) wrapWithMiddleware(handler http.Handler) http.Handler {
 func (t *HTTPTransport) corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		
+
 		// Check if origin is allowed
 		allowed := false
 		if len(t.config.AllowedOrigins) == 0 {

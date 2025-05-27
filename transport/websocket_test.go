@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fredcamaral/gomcp-sdk/protocol"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/fredcamaral/gomcp-sdk/protocol"
 )
 
 func TestWebSocketTransport_StartStop(t *testing.T) {
@@ -51,7 +51,7 @@ func TestWebSocketTransport_Connection(t *testing.T) {
 	}
 
 	transport := NewWebSocketTransport(config)
-	
+
 	handler := &mockHandler{
 		handleFunc: func(ctx context.Context, req *protocol.JSONRPCRequest) *protocol.JSONRPCResponse {
 			return &protocol.JSONRPCResponse{
@@ -74,7 +74,7 @@ func TestWebSocketTransport_Connection(t *testing.T) {
 
 	// Get actual address
 	addr := transport.Address()
-	
+
 	// Connect WebSocket client
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/ws"}
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
@@ -102,7 +102,7 @@ func TestWebSocketTransport_Connection(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "2.0", resp.JSONRPC)
-	
+
 	// Compare IDs handling JSON number conversion
 	switch expected := req.ID.(type) {
 	case int:
@@ -120,12 +120,12 @@ func TestWebSocketTransport_Connection(t *testing.T) {
 	default:
 		assert.Equal(t, req.ID, resp.ID)
 	}
-	
+
 	assert.Nil(t, resp.Error)
-	
+
 	result := resp.Result.(map[string]interface{})
 	assert.Equal(t, "test.method", result["method"])
-	
+
 	// Close connection
 	conn.Close()
 	time.Sleep(100 * time.Millisecond)
@@ -149,11 +149,11 @@ func TestWebSocketTransport_MultipleConnections(t *testing.T) {
 	defer transport.Stop()
 
 	addr := transport.Address()
-	
+
 	// Connect multiple clients
 	numClients := 5
 	clients := make([]*websocket.Conn, numClients)
-	
+
 	for i := 0; i < numClients; i++ {
 		u := url.URL{Scheme: "ws", Host: addr, Path: "/ws"}
 		conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
@@ -170,7 +170,7 @@ func TestWebSocketTransport_MultipleConnections(t *testing.T) {
 		"type": "broadcast",
 		"data": "test",
 	}
-	
+
 	err = transport.Broadcast(testMessage)
 	require.NoError(t, err)
 
@@ -186,7 +186,7 @@ func TestWebSocketTransport_MultipleConnections(t *testing.T) {
 	for _, conn := range clients {
 		conn.Close()
 	}
-	
+
 	time.Sleep(100 * time.Millisecond)
 	assert.Equal(t, 0, transport.ConnectionCount())
 }
@@ -209,7 +209,7 @@ func TestWebSocketTransport_ErrorHandling(t *testing.T) {
 	defer transport.Stop()
 
 	addr := transport.Address()
-	
+
 	// Connect client
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/ws"}
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
@@ -217,10 +217,10 @@ func TestWebSocketTransport_ErrorHandling(t *testing.T) {
 	defer conn.Close()
 
 	tests := []struct {
-		name          string
-		message       interface{}
-		expectError   bool
-		errorCode     int
+		name        string
+		message     interface{}
+		expectError bool
+		errorCode   int
 	}{
 		{
 			name:        "invalid json",
@@ -281,7 +281,7 @@ func TestWebSocketTransport_Compression(t *testing.T) {
 			for i := range largeData {
 				largeData[i] = "This is a test string for compression"
 			}
-			
+
 			return &protocol.JSONRPCResponse{
 				JSONRPC: "2.0",
 				ID:      req.ID,
@@ -298,13 +298,13 @@ func TestWebSocketTransport_Compression(t *testing.T) {
 	defer transport.Stop()
 
 	addr := transport.Address()
-	
+
 	// Connect with compression enabled
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/ws"}
 	dialer := websocket.Dialer{
 		EnableCompression: true,
 	}
-	
+
 	conn, _, err := dialer.Dial(u.String(), nil)
 	require.NoError(t, err)
 	defer conn.Close()
@@ -347,7 +347,7 @@ func TestWebSocketTransport_PingPong(t *testing.T) {
 	defer transport.Stop()
 
 	addr := transport.Address()
-	
+
 	// Connect client
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/ws"}
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
@@ -356,7 +356,7 @@ func TestWebSocketTransport_PingPong(t *testing.T) {
 
 	// Test server->client ping
 	pingReceived := make(chan bool, 1)
-	
+
 	// Set a custom ping handler to detect server pings
 	conn.SetPingHandler(func(appData string) error {
 		pingReceived <- true
@@ -381,18 +381,18 @@ func TestWebSocketTransport_PingPong(t *testing.T) {
 	case <-time.After(1 * time.Second):
 		t.Fatal("No ping received from server")
 	}
-	
+
 	// Test client->server ping
 	pongReceived := make(chan bool, 1)
 	conn.SetPongHandler(func(string) error {
 		pongReceived <- true
 		return nil
 	})
-	
+
 	// Send a ping from client
 	err = conn.WriteControl(websocket.PingMessage, []byte("test"), time.Now().Add(time.Second))
 	require.NoError(t, err)
-	
+
 	// Server should respond with pong
 	select {
 	case <-pongReceived:
@@ -451,9 +451,9 @@ func TestWebSocketTransport_CheckOrigin(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			headers := http.Header{}
 			headers.Set("Origin", tt.origin)
-			
+
 			conn, resp, err := websocket.DefaultDialer.Dial(u.String(), headers)
-			
+
 			if tt.shouldConnect {
 				require.NoError(t, err)
 				assert.NotNil(t, conn)
@@ -488,7 +488,7 @@ func BenchmarkWebSocketTransport_SingleConnection(b *testing.B) {
 
 	addr := transport.Address()
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/ws"}
-	
+
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	require.NoError(b, err)
 	defer conn.Close()
@@ -507,7 +507,7 @@ func BenchmarkWebSocketTransport_SingleConnection(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		
+
 		var resp protocol.JSONRPCResponse
 		err = conn.ReadJSON(&resp)
 		if err != nil {
@@ -533,7 +533,7 @@ func BenchmarkWebSocketTransport_Broadcast(b *testing.B) {
 	defer transport.Stop()
 
 	addr := transport.Address()
-	
+
 	// Connect multiple clients
 	numClients := 10
 	for i := 0; i < numClients; i++ {
@@ -541,7 +541,7 @@ func BenchmarkWebSocketTransport_Broadcast(b *testing.B) {
 		conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 		require.NoError(b, err)
 		defer conn.Close()
-		
+
 		// Read messages in background
 		go func() {
 			for {

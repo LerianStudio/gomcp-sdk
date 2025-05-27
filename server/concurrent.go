@@ -7,7 +7,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	
+
 	"github.com/fredcamaral/gomcp-sdk/protocol"
 )
 
@@ -16,25 +16,25 @@ type ConcurrentHandler struct {
 	// Worker pool configuration
 	numWorkers   int
 	maxQueueSize int
-	
+
 	// Request channels
 	requestChan  chan *requestWork
 	responseChan chan *responseWork
-	
+
 	// Worker management
 	workers    []*worker
 	workerPool sync.Pool
 	wg         sync.WaitGroup
-	
+
 	// Metrics
 	activeRequests   int64
 	totalRequests    int64
 	rejectedRequests int64
-	
+
 	// Shutdown
 	ctx    context.Context
 	cancel context.CancelFunc
-	
+
 	// Request handler
 	handler RequestHandler
 }
@@ -59,9 +59,9 @@ type responseWork struct {
 
 // worker represents a worker goroutine
 type worker struct {
-	id          int
-	handler     *ConcurrentHandler
-	activeWork  atomic.Value
+	id         int
+	handler    *ConcurrentHandler
+	activeWork atomic.Value
 }
 
 // ConcurrentOptions configures the concurrent handler
@@ -83,9 +83,9 @@ func NewConcurrentHandler(handler RequestHandler, opts *ConcurrentOptions) *Conc
 	if opts == nil {
 		opts = DefaultConcurrentOptions()
 	}
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	ch := &ConcurrentHandler{
 		numWorkers:   opts.NumWorkers,
 		maxQueueSize: opts.MaxQueueSize,
@@ -96,7 +96,7 @@ func NewConcurrentHandler(handler RequestHandler, opts *ConcurrentOptions) *Conc
 		ctx:          ctx,
 		cancel:       cancel,
 	}
-	
+
 	// Initialize worker pool
 	ch.workerPool = sync.Pool{
 		New: func() interface{} {
@@ -105,7 +105,7 @@ func NewConcurrentHandler(handler RequestHandler, opts *ConcurrentOptions) *Conc
 			}
 		},
 	}
-	
+
 	// Start workers
 	for i := 0; i < ch.numWorkers; i++ {
 		w := &worker{
@@ -116,7 +116,7 @@ func NewConcurrentHandler(handler RequestHandler, opts *ConcurrentOptions) *Conc
 		ch.wg.Add(1)
 		go w.run()
 	}
-	
+
 	return ch
 }
 
@@ -124,27 +124,27 @@ func NewConcurrentHandler(handler RequestHandler, opts *ConcurrentOptions) *Conc
 func (ch *ConcurrentHandler) HandleRequest(ctx context.Context, req *protocol.JSONRPCRequest) (*protocol.JSONRPCResponse, error) {
 	// Increment metrics
 	atomic.AddInt64(&ch.totalRequests, 1)
-	
+
 	// Check if we're at capacity
 	if atomic.LoadInt64(&ch.activeRequests) >= int64(ch.maxQueueSize) {
 		atomic.AddInt64(&ch.rejectedRequests, 1)
 		return nil, protocol.NewJSONRPCError(protocol.InternalError, "server at capacity", nil)
 	}
-	
+
 	// Increment active requests
 	atomic.AddInt64(&ch.activeRequests, 1)
 	defer atomic.AddInt64(&ch.activeRequests, -1)
-	
+
 	// Create response channel
 	respChan := make(chan *responseWork, 1)
-	
+
 	// Create work item
 	work := &requestWork{
 		ctx:      ctx,
 		request:  req,
 		response: respChan,
 	}
-	
+
 	// Submit work
 	select {
 	case ch.requestChan <- work:
@@ -154,7 +154,7 @@ func (ch *ConcurrentHandler) HandleRequest(ctx context.Context, req *protocol.JS
 	case <-ch.ctx.Done():
 		return nil, context.Canceled
 	}
-	
+
 	// Wait for response
 	select {
 	case resp := <-respChan:
@@ -170,14 +170,14 @@ func (ch *ConcurrentHandler) HandleRequest(ctx context.Context, req *protocol.JS
 func (ch *ConcurrentHandler) Shutdown(timeout time.Duration) error {
 	// Signal shutdown
 	ch.cancel()
-	
+
 	// Wait for workers with timeout
 	done := make(chan struct{})
 	go func() {
 		ch.wg.Wait()
 		close(done)
 	}()
-	
+
 	select {
 	case <-done:
 		return nil
@@ -200,7 +200,7 @@ func (ch *ConcurrentHandler) Metrics() map[string]int64 {
 // run is the worker loop
 func (w *worker) run() {
 	defer w.handler.wg.Done()
-	
+
 	for {
 		select {
 		case work := <-w.handler.requestChan:
@@ -216,10 +216,10 @@ func (w *worker) processWork(work *requestWork) {
 	// Store active work for monitoring
 	w.activeWork.Store(work)
 	defer w.activeWork.Store(nil)
-	
+
 	// Handle the request
 	resp, err := w.handler.handler.HandleRequest(work.ctx, work.request)
-	
+
 	// Send response
 	select {
 	case work.response <- &responseWork{response: resp, err: err}:
@@ -236,7 +236,7 @@ type BatchProcessor struct {
 	handler      RequestHandler
 	batchSize    int
 	batchTimeout time.Duration
-	
+
 	mu       sync.Mutex
 	batch    []*batchItem
 	timer    *time.Timer
@@ -275,7 +275,7 @@ func NewBatchProcessor(handler RequestHandler, opts *BatchOptions) *BatchProcess
 	if opts == nil {
 		opts = DefaultBatchOptions()
 	}
-	
+
 	bp := &BatchProcessor{
 		handler:      handler,
 		batchSize:    opts.BatchSize,
@@ -283,23 +283,23 @@ func NewBatchProcessor(handler RequestHandler, opts *BatchOptions) *BatchProcess
 		batch:        make([]*batchItem, 0, opts.BatchSize),
 		resultCh:     make(chan *batchResult, opts.BatchSize),
 	}
-	
+
 	return bp
 }
 
 // HandleRequest adds a request to the batch
 func (bp *BatchProcessor) HandleRequest(ctx context.Context, req *protocol.JSONRPCRequest) (*protocol.JSONRPCResponse, error) {
 	resultCh := make(chan *batchResult, 1)
-	
+
 	bp.mu.Lock()
-	
+
 	// Add to batch
 	bp.batch = append(bp.batch, &batchItem{
 		ctx:      ctx,
 		request:  req,
 		resultCh: resultCh,
 	})
-	
+
 	// Check if batch is full
 	if len(bp.batch) >= bp.batchSize {
 		bp.processBatchLocked()
@@ -311,9 +311,9 @@ func (bp *BatchProcessor) HandleRequest(ctx context.Context, req *protocol.JSONR
 			bp.processBatchLocked()
 		})
 	}
-	
+
 	bp.mu.Unlock()
-	
+
 	// Wait for result
 	select {
 	case result := <-resultCh:
@@ -328,26 +328,26 @@ func (bp *BatchProcessor) processBatchLocked() {
 	if len(bp.batch) == 0 {
 		return
 	}
-	
+
 	// Stop timer if running
 	if bp.timer != nil {
 		bp.timer.Stop()
 		bp.timer = nil
 	}
-	
+
 	// Process batch in parallel
 	batch := bp.batch
 	bp.batch = make([]*batchItem, 0, bp.batchSize)
-	
+
 	// Process each item in the batch concurrently
 	var wg sync.WaitGroup
 	for _, item := range batch {
 		wg.Add(1)
 		go func(item *batchItem) {
 			defer wg.Done()
-			
+
 			resp, err := bp.handler.HandleRequest(item.ctx, item.request)
-			
+
 			select {
 			case item.resultCh <- &batchResult{response: resp, err: err}:
 				// Result sent
@@ -356,7 +356,7 @@ func (bp *BatchProcessor) processBatchLocked() {
 			}
 		}(item)
 	}
-	
+
 	// Wait for all items to complete
 	wg.Wait()
 }
@@ -387,7 +387,7 @@ type pipelineResult struct {
 // NewPipelineHandler creates a new pipeline handler
 func NewPipelineHandler(handler RequestHandler, workers int) *PipelineHandler {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	ph := &PipelineHandler{
 		handler:  handler,
 		pipeline: make(chan *pipelineWork, workers*2),
@@ -395,26 +395,26 @@ func NewPipelineHandler(handler RequestHandler, workers int) *PipelineHandler {
 		ctx:      ctx,
 		cancel:   cancel,
 	}
-	
+
 	// Start pipeline workers
 	for i := 0; i < workers; i++ {
 		ph.wg.Add(1)
 		go ph.pipelineWorker()
 	}
-	
+
 	return ph
 }
 
 // HandleRequest processes a request through the pipeline
 func (ph *PipelineHandler) HandleRequest(ctx context.Context, req *protocol.JSONRPCRequest) (*protocol.JSONRPCResponse, error) {
 	resultCh := make(chan *pipelineResult, 1)
-	
+
 	work := &pipelineWork{
 		ctx:      ctx,
 		request:  req,
 		resultCh: resultCh,
 	}
-	
+
 	select {
 	case ph.pipeline <- work:
 		// Work submitted
@@ -423,7 +423,7 @@ func (ph *PipelineHandler) HandleRequest(ctx context.Context, req *protocol.JSON
 	case <-ph.ctx.Done():
 		return nil, context.Canceled
 	}
-	
+
 	select {
 	case result := <-resultCh:
 		return result.response, result.err
@@ -437,12 +437,12 @@ func (ph *PipelineHandler) HandleRequest(ctx context.Context, req *protocol.JSON
 // pipelineWorker processes work from the pipeline
 func (ph *PipelineHandler) pipelineWorker() {
 	defer ph.wg.Done()
-	
+
 	for {
 		select {
 		case work := <-ph.pipeline:
 			resp, err := ph.handler.HandleRequest(work.ctx, work.request)
-			
+
 			select {
 			case work.resultCh <- &pipelineResult{response: resp, err: err}:
 				// Result sent

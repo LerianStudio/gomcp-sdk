@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 package main
@@ -14,7 +15,7 @@ func main() {
 		fmt.Println("Usage: go run test.go [server|client]")
 		return
 	}
-	
+
 	switch os.Args[1] {
 	case "server":
 		// Run as server
@@ -29,19 +30,19 @@ func main() {
 		cmd.Env = append(os.Environ(), "MCP_PORT=3000")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		
+
 		if err := cmd.Start(); err != nil {
 			fmt.Printf("Failed to start server: %v\n", err)
 			return
 		}
-		
+
 		// Wait for server to start
 		fmt.Println("Waiting for server to start...")
 		time.Sleep(2 * time.Second)
-		
+
 		// Run client tests
 		RunClientTest()
-		
+
 		// Kill server
 		cmd.Process.Kill()
 	default:

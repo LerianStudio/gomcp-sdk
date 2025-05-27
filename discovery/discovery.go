@@ -26,12 +26,12 @@ func NewServiceWithPluginPath(pluginPath string, scanInterval time.Duration) (*S
 	s := &Service{
 		registry: NewRegistry(),
 	}
-	
+
 	watcher, err := NewPluginWatcher(pluginPath, scanInterval, s.registry)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create plugin watcher: %w", err)
 	}
-	
+
 	s.pluginWatcher = watcher
 	return s, nil
 }
@@ -65,7 +65,7 @@ func (s *Service) HandleDiscover(ctx context.Context, params json.RawMessage) (i
 			return nil, fmt.Errorf("invalid filter parameters: %w", err)
 		}
 	}
-	
+
 	return s.registry.Discover(&filter), nil
 }
 

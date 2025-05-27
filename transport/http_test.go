@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fredcamaral/gomcp-sdk/protocol"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/fredcamaral/gomcp-sdk/protocol"
 )
 
 // mockHandler implements RequestHandler for testing
@@ -71,7 +71,7 @@ func TestHTTPTransport_HandleRequest(t *testing.T) {
 	}
 
 	transport := NewHTTPTransport(config)
-	
+
 	handler := &mockHandler{
 		handleFunc: func(ctx context.Context, req *protocol.JSONRPCRequest) *protocol.JSONRPCResponse {
 			return &protocol.JSONRPCResponse{
@@ -148,7 +148,7 @@ func TestHTTPTransport_HandleRequest(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, "2.0", jsonResp.JSONRPC)
-			
+
 			// Compare IDs handling JSON number conversion
 			switch expected := tt.request.ID.(type) {
 			case int:
@@ -166,7 +166,7 @@ func TestHTTPTransport_HandleRequest(t *testing.T) {
 			default:
 				assert.Equal(t, tt.request.ID, jsonResp.ID)
 			}
-			
+
 			if tt.expectedError {
 				assert.NotNil(t, jsonResp.Error)
 			} else {
@@ -279,17 +279,17 @@ func TestHTTPTransport_CORS(t *testing.T) {
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	tests := []struct {
-		name               string
-		origin             string
-		method             string
-		expectedAllowed    bool
+		name                string
+		origin              string
+		method              string
+		expectedAllowed     bool
 		expectedAllowOrigin string
 	}{
 		{
-			name:               "allowed origin",
-			origin:             "https://example.com",
-			method:             "OPTIONS",
-			expectedAllowed:    true,
+			name:                "allowed origin",
+			origin:              "https://example.com",
+			method:              "OPTIONS",
+			expectedAllowed:     true,
 			expectedAllowOrigin: "https://example.com",
 		},
 		{
@@ -299,10 +299,10 @@ func TestHTTPTransport_CORS(t *testing.T) {
 			expectedAllowed: false,
 		},
 		{
-			name:               "preflight request",
-			origin:             "https://test.com",
-			method:             "OPTIONS",
-			expectedAllowed:    true,
+			name:                "preflight request",
+			origin:              "https://test.com",
+			method:              "OPTIONS",
+			expectedAllowed:     true,
 			expectedAllowOrigin: "https://test.com",
 		},
 	}
@@ -378,7 +378,7 @@ func TestHTTPTransport_RecoveryMiddleware(t *testing.T) {
 	}
 
 	transport := NewHTTPTransport(config)
-	
+
 	// Handler that panics
 	handler := &mockHandler{
 		handleFunc: func(ctx context.Context, req *protocol.JSONRPCRequest) *protocol.JSONRPCResponse {

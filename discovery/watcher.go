@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
@@ -14,10 +14,10 @@ import (
 
 // PluginManifest describes a plugin's MCP capabilities
 type PluginManifest struct {
-	Name        string            `json:"name"`
-	Version     string            `json:"version"`
-	Description string            `json:"description"`
-	Author      string            `json:"author"`
+	Name        string              `json:"name"`
+	Version     string              `json:"version"`
+	Description string              `json:"description"`
+	Author      string              `json:"author"`
 	Tools       []protocol.Tool     `json:"tools"`
 	Resources   []protocol.Resource `json:"resources"`
 	Prompts     []protocol.Prompt   `json:"prompts"`
@@ -54,16 +54,16 @@ func NewPluginWatcher(path string, scanInterval time.Duration, registry *Registr
 // Start begins watching for plugins
 func (w *PluginWatcher) Start(ctx context.Context) error {
 	w.ctx, w.cancel = context.WithCancel(ctx)
-	
+
 	// Do initial scan
 	if err := w.scan(); err != nil {
 		return fmt.Errorf("initial scan failed: %w", err)
 	}
-	
+
 	// Start periodic scanning
 	w.wg.Add(1)
 	go w.watchLoop()
-	
+
 	return nil
 }
 
@@ -79,10 +79,10 @@ func (w *PluginWatcher) Stop() error {
 // watchLoop periodically scans for plugin changes
 func (w *PluginWatcher) watchLoop() {
 	defer w.wg.Done()
-	
+
 	ticker := time.NewTicker(w.scanInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-w.ctx.Done():
@@ -100,23 +100,23 @@ func (w *PluginWatcher) watchLoop() {
 func (w *PluginWatcher) scan() error {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
-	
+
 	// Track which plugins we've seen in this scan
 	seenPlugins := make(map[string]bool)
-	
+
 	// Look for manifest files
 	pattern := filepath.Join(w.path, "*", "mcp-manifest.json")
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
 		return fmt.Errorf("failed to glob for manifests: %w", err)
 	}
-	
+
 	// Also check root directory
 	rootManifest := filepath.Join(w.path, "mcp-manifest.json")
 	if _, err := os.Stat(rootManifest); err == nil {
 		matches = append(matches, rootManifest)
 	}
-	
+
 	// Process each manifest
 	for _, manifestPath := range matches {
 		pluginID := filepath.Dir(manifestPath)
@@ -125,29 +125,29 @@ func (w *PluginWatcher) scan() error {
 		} else {
 			pluginID = filepath.Base(pluginID)
 		}
-		
+
 		seenPlugins[pluginID] = true
-		
+
 		// Check if plugin is new or updated
 		_, err := os.Stat(manifestPath)
 		if err != nil {
 			continue
 		}
-		
+
 		existingPlugin, exists := w.plugins[pluginID]
 		if exists {
 			// Check if manifest was modified
 			// For simplicity, we'll re-read all manifests each scan
 			// In production, you'd check modification time
 		}
-		
+
 		// Load manifest
 		manifest, err := w.loadManifest(manifestPath)
 		if err != nil {
 			fmt.Printf("Failed to load manifest %s: %v\n", manifestPath, err)
 			continue
 		}
-		
+
 		// Register or update plugin
 		if !exists {
 			// New plugin
@@ -162,10 +162,10 @@ func (w *PluginWatcher) scan() error {
 				continue
 			}
 		}
-		
+
 		w.plugins[pluginID] = manifest
 	}
-	
+
 	// Unregister plugins that are no longer present
 	for pluginID := range w.plugins {
 		if !seenPlugins[pluginID] {
@@ -175,7 +175,7 @@ func (w *PluginWatcher) scan() error {
 			delete(w.plugins, pluginID)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -185,19 +185,19 @@ func (w *PluginWatcher) loadManifest(path string) (*PluginManifest, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read manifest: %w", err)
 	}
-	
+
 	var manifest PluginManifest
 	if err := json.Unmarshal(data, &manifest); err != nil {
 		return nil, fmt.Errorf("failed to parse manifest: %w", err)
 	}
-	
+
 	return &manifest, nil
 }
 
 // registerPlugin registers all items from a plugin
 func (w *PluginWatcher) registerPlugin(pluginID string, manifest *PluginManifest) error {
 	source := fmt.Sprintf("plugin:%s", pluginID)
-	
+
 	// Register tools
 	for _, tool := range manifest.Tools {
 		// Note: In a real implementation, you'd need to load the actual tool handler
@@ -206,21 +206,21 @@ func (w *PluginWatcher) registerPlugin(pluginID string, manifest *PluginManifest
 			return fmt.Errorf("failed to register tool %s: %w", tool.Name, err)
 		}
 	}
-	
+
 	// Register resources
 	for _, resource := range manifest.Resources {
 		if err := w.registry.RegisterResource(resource, source, manifest.Tags); err != nil {
 			return fmt.Errorf("failed to register resource %s: %w", resource.URI, err)
 		}
 	}
-	
+
 	// Register prompts
 	for _, prompt := range manifest.Prompts {
 		if err := w.registry.RegisterPrompt(prompt, source, manifest.Tags); err != nil {
 			return fmt.Errorf("failed to register prompt %s: %w", prompt.Name, err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -235,24 +235,24 @@ func (w *PluginWatcher) updatePlugin(pluginID string, manifest *PluginManifest) 
 
 // unregisterPlugin removes all items from a plugin
 func (w *PluginWatcher) unregisterPlugin(pluginID string) error {
-	
+
 	if manifest, exists := w.plugins[pluginID]; exists {
 		// Unregister tools
 		for _, tool := range manifest.Tools {
 			w.registry.UnregisterTool(tool.Name)
 		}
-		
+
 		// Unregister resources
 		for _, resource := range manifest.Resources {
 			w.registry.UnregisterResource(resource.URI)
 		}
-		
+
 		// Unregister prompts
 		for _, prompt := range manifest.Prompts {
 			w.registry.UnregisterPrompt(prompt.Name)
 		}
 	}
-	
+
 	return nil
 }
 

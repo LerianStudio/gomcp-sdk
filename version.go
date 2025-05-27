@@ -13,13 +13,13 @@ const APIVersion = 2
 type VersionInfo struct {
 	// Library version following semantic versioning
 	Library string `json:"library"`
-	
+
 	// MCP protocol version supported
 	Protocol string `json:"protocol"`
-	
+
 	// API version for compatibility checking
 	API int `json:"api"`
-	
+
 	// Build metadata (commit hash, date, etc.)
 	BuildMetadata map[string]string `json:"build_metadata,omitempty"`
 }

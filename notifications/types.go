@@ -31,9 +31,9 @@ type ResourceChangedParams struct {
 
 // LogMessageParams represents parameters for log notifications
 type LogMessageParams struct {
-	Level   string `json:"level"`
-	Logger  string `json:"logger,omitempty"`
-	Message string `json:"message"`
+	Level   string      `json:"level"`
+	Logger  string      `json:"logger,omitempty"`
+	Message string      `json:"message"`
 	Data    interface{} `json:"data,omitempty"`
 }
 
@@ -51,16 +51,16 @@ const (
 	NotificationResourcesListChanged = "notifications/resources/list_changed"
 	NotificationPromptsListChanged   = "notifications/prompts/list_changed"
 	NotificationRootsListChanged     = "notifications/roots/list_changed"
-	
+
 	// Resource-specific notifications
 	NotificationResourceChanged = "notifications/resource/changed"
-	
+
 	// Progress notifications
 	NotificationProgress = "notifications/progress"
-	
+
 	// Logging notifications
 	NotificationLogMessage = "notifications/log"
-	
+
 	// Custom notifications
 	NotificationCustom = "notifications/custom"
 )

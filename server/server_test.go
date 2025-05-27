@@ -111,7 +111,7 @@ func TestNewServer(t *testing.T) {
 
 func TestAddTool(t *testing.T) {
 	server := NewServer("test", "1.0")
-	
+
 	tool := protocol.Tool{
 		Name:        "test_tool",
 		Description: "A test tool",
@@ -119,31 +119,31 @@ func TestAddTool(t *testing.T) {
 			"type": "object",
 		},
 	}
-	
+
 	handler := &mockToolHandler{result: "test result"}
-	
+
 	server.AddTool(tool, handler)
-	
+
 	// Check tool was added
 	if len(server.tools) != 1 {
 		t.Errorf("Expected 1 tool, got %d", len(server.tools))
 	}
-	
+
 	reg, exists := server.tools["test_tool"]
 	if !exists {
 		t.Error("Expected tool 'test_tool' to exist")
 	}
-	
+
 	if reg.Tool.Name != "test_tool" {
 		t.Errorf("Expected tool name 'test_tool', got %s", reg.Tool.Name)
 	}
-	
+
 	// Add another tool
 	tool2 := protocol.Tool{
 		Name: "test_tool2",
 	}
 	server.AddTool(tool2, handler)
-	
+
 	if len(server.tools) != 2 {
 		t.Errorf("Expected 2 tools, got %d", len(server.tools))
 	}
@@ -151,32 +151,32 @@ func TestAddTool(t *testing.T) {
 
 func TestAddResource(t *testing.T) {
 	server := NewServer("test", "1.0")
-	
+
 	resource := protocol.Resource{
 		URI:         "file:///test.txt",
 		Name:        "test.txt",
 		Description: "A test file",
 		MimeType:    "text/plain",
 	}
-	
+
 	handler := &mockResourceHandler{
 		content: []protocol.Content{
 			protocol.NewContent("test content"),
 		},
 	}
-	
+
 	server.AddResource(resource, handler)
-	
+
 	// Check resource was added
 	if len(server.resources) != 1 {
 		t.Errorf("Expected 1 resource, got %d", len(server.resources))
 	}
-	
+
 	reg, exists := server.resources["file:///test.txt"]
 	if !exists {
 		t.Error("Expected resource 'file:///test.txt' to exist")
 	}
-	
+
 	if reg.Resource.URI != "file:///test.txt" {
 		t.Errorf("Expected resource URI 'file:///test.txt', got %s", reg.Resource.URI)
 	}
@@ -184,7 +184,7 @@ func TestAddResource(t *testing.T) {
 
 func TestAddPrompt(t *testing.T) {
 	server := NewServer("test", "1.0")
-	
+
 	prompt := protocol.Prompt{
 		Name:        "test_prompt",
 		Description: "A test prompt",
@@ -195,25 +195,25 @@ func TestAddPrompt(t *testing.T) {
 			},
 		},
 	}
-	
+
 	handler := &mockPromptHandler{
 		content: []protocol.Content{
 			protocol.NewContent("Hello, {{name}}!"),
 		},
 	}
-	
+
 	server.AddPrompt(prompt, handler)
-	
+
 	// Check prompt was added
 	if len(server.prompts) != 1 {
 		t.Errorf("Expected 1 prompt, got %d", len(server.prompts))
 	}
-	
+
 	reg, exists := server.prompts["test_prompt"]
 	if !exists {
 		t.Error("Expected prompt 'test_prompt' to exist")
 	}
-	
+
 	if reg.Prompt.Name != "test_prompt" {
 		t.Errorf("Expected prompt name 'test_prompt', got %s", reg.Prompt.Name)
 	}
@@ -222,9 +222,9 @@ func TestAddPrompt(t *testing.T) {
 func TestSetTransport(t *testing.T) {
 	server := NewServer("test", "1.0")
 	transport := &mockTransport{}
-	
+
 	server.SetTransport(transport)
-	
+
 	if server.transport != transport {
 		t.Error("Expected transport to be set")
 	}
@@ -235,29 +235,29 @@ func TestStart(t *testing.T) {
 		server := NewServer("test", "1.0")
 		transport := &mockTransport{}
 		server.SetTransport(transport)
-		
+
 		ctx := context.Background()
 		err := server.Start(ctx)
-		
+
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}
-		
+
 		if !transport.started {
 			t.Error("Expected transport to be started")
 		}
 	})
-	
+
 	t.Run("start without transport", func(t *testing.T) {
 		server := NewServer("test", "1.0")
-		
+
 		ctx := context.Background()
 		err := server.Start(ctx)
-		
+
 		if err == nil {
 			t.Error("Expected error when starting without transport")
 		}
-		
+
 		if err.Error() != "no transport configured" {
 			t.Errorf("Expected 'no transport configured' error, got %v", err)
 		}
@@ -269,7 +269,7 @@ func TestHandleInitialize(t *testing.T) {
 	transport := &mockTransport{}
 	server.SetTransport(transport)
 	server.Start(context.Background())
-	
+
 	tests := []struct {
 		name           string
 		request        *protocol.JSONRPCRequest
@@ -312,11 +312,11 @@ func TestHandleInitialize(t *testing.T) {
 			expectError: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resp := transport.simulateRequest(tt.request)
-			
+
 			if tt.expectError {
 				if resp.Error == nil {
 					t.Error("Expected error response")
@@ -325,23 +325,23 @@ func TestHandleInitialize(t *testing.T) {
 				if resp.Error != nil {
 					t.Errorf("Unexpected error: %v", resp.Error)
 				}
-				
+
 				// Check that server is initialized
 				if !server.IsInitialized() {
 					t.Error("Expected server to be initialized")
 				}
-				
+
 				// Verify result structure
 				resultJSON, _ := json.Marshal(resp.Result)
 				var result protocol.InitializeResult
 				json.Unmarshal(resultJSON, &result)
-				
+
 				if result.ProtocolVersion != tt.expectedResult.ProtocolVersion {
-					t.Errorf("Protocol version mismatch: got %s, want %s", 
+					t.Errorf("Protocol version mismatch: got %s, want %s",
 						result.ProtocolVersion, tt.expectedResult.ProtocolVersion)
 				}
 				if result.ServerInfo.Name != tt.expectedResult.ServerInfo.Name {
-					t.Errorf("Server name mismatch: got %s, want %s", 
+					t.Errorf("Server name mismatch: got %s, want %s",
 						result.ServerInfo.Name, tt.expectedResult.ServerInfo.Name)
 				}
 			}
@@ -354,7 +354,7 @@ func TestHandleToolsList(t *testing.T) {
 	transport := &mockTransport{}
 	server.SetTransport(transport)
 	server.Start(context.Background())
-	
+
 	// Add some tools
 	tool1 := protocol.Tool{
 		Name:        "tool1",
@@ -366,29 +366,29 @@ func TestHandleToolsList(t *testing.T) {
 		Description: "Second tool",
 		InputSchema: map[string]interface{}{"type": "object"},
 	}
-	
+
 	server.AddTool(tool1, &mockToolHandler{})
 	server.AddTool(tool2, &mockToolHandler{})
-	
+
 	// Test tools/list
 	req := &protocol.JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      1,
 		Method:  "tools/list",
 	}
-	
+
 	resp := transport.simulateRequest(req)
-	
+
 	if resp.Error != nil {
 		t.Errorf("Unexpected error: %v", resp.Error)
 	}
-	
+
 	// Check result
 	result, ok := resp.Result.(map[string]interface{})
 	if !ok {
 		t.Fatal("Expected result to be a map")
 	}
-	
+
 	tools, ok := result["tools"].([]interface{})
 	if !ok {
 		// Try as []protocol.Tool due to type assertion
@@ -411,7 +411,7 @@ func TestHandleToolsCall(t *testing.T) {
 	transport := &mockTransport{}
 	server.SetTransport(transport)
 	server.Start(context.Background())
-	
+
 	tests := []struct {
 		name          string
 		setupTools    func()
@@ -453,7 +453,7 @@ func TestHandleToolsCall(t *testing.T) {
 				resultJSON, _ := json.Marshal(resp.Result)
 				var result protocol.ToolCallResult
 				json.Unmarshal(resultJSON, &result)
-				
+
 				if result.IsError {
 					t.Error("Expected successful result, got error")
 				}
@@ -492,7 +492,7 @@ func TestHandleToolsCall(t *testing.T) {
 					json.Unmarshal(resultJSON, &r)
 					result = &r
 				}
-				
+
 				if result.IsError {
 					t.Error("Expected successful result")
 				}
@@ -529,7 +529,7 @@ func TestHandleToolsCall(t *testing.T) {
 				resultJSON, _ := json.Marshal(resp.Result)
 				var result protocol.ToolCallResult
 				json.Unmarshal(resultJSON, &result)
-				
+
 				if result.IsError {
 					t.Error("Expected successful result")
 				}
@@ -573,7 +573,7 @@ func TestHandleToolsCall(t *testing.T) {
 				resultJSON, _ := json.Marshal(resp.Result)
 				var result protocol.ToolCallResult
 				json.Unmarshal(resultJSON, &result)
-				
+
 				if !result.IsError {
 					t.Error("Expected error result")
 				}
@@ -597,18 +597,18 @@ func TestHandleToolsCall(t *testing.T) {
 			expectError: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear tools
 			server.tools = make(map[string]*ToolRegistration)
-			
+
 			// Setup tools
 			tt.setupTools()
-			
+
 			// Execute request
 			resp := transport.simulateRequest(tt.request)
-			
+
 			if tt.expectError {
 				if resp.Error == nil {
 					t.Error("Expected error response")
@@ -630,7 +630,7 @@ func TestHandleResourcesList(t *testing.T) {
 	transport := &mockTransport{}
 	server.SetTransport(transport)
 	server.Start(context.Background())
-	
+
 	// Add resources
 	resource1 := protocol.Resource{
 		URI:      "file:///file1.txt",
@@ -641,29 +641,29 @@ func TestHandleResourcesList(t *testing.T) {
 		URI:  "https://example.com/data",
 		Name: "Remote Data",
 	}
-	
+
 	server.AddResource(resource1, &mockResourceHandler{})
 	server.AddResource(resource2, &mockResourceHandler{})
-	
+
 	// Test resources/list
 	req := &protocol.JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      1,
 		Method:  "resources/list",
 	}
-	
+
 	resp := transport.simulateRequest(req)
-	
+
 	if resp.Error != nil {
 		t.Errorf("Unexpected error: %v", resp.Error)
 	}
-	
+
 	// Check result
 	result, ok := resp.Result.(map[string]interface{})
 	if !ok {
 		t.Fatal("Expected result to be a map")
 	}
-	
+
 	resources, ok := result["resources"].([]interface{})
 	if !ok {
 		// Try as []protocol.Resource
@@ -686,7 +686,7 @@ func TestHandleResourcesRead(t *testing.T) {
 	transport := &mockTransport{}
 	server.SetTransport(transport)
 	server.Start(context.Background())
-	
+
 	tests := []struct {
 		name           string
 		setupResources func()
@@ -723,7 +723,7 @@ func TestHandleResourcesRead(t *testing.T) {
 				if !ok {
 					t.Fatal("Expected result to be a map")
 				}
-				
+
 				contents, ok := result["contents"].([]protocol.Content)
 				if !ok {
 					// Try unmarshaling
@@ -732,7 +732,7 @@ func TestHandleResourcesRead(t *testing.T) {
 					json.Unmarshal(contentsJSON, &c)
 					contents = c
 				}
-				
+
 				if len(contents) != 1 {
 					t.Errorf("Expected 1 content item, got %d", len(contents))
 				}
@@ -795,18 +795,18 @@ func TestHandleResourcesRead(t *testing.T) {
 			expectError: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear resources
 			server.resources = make(map[string]*ResourceRegistration)
-			
+
 			// Setup resources
 			tt.setupResources()
-			
+
 			// Execute request
 			resp := transport.simulateRequest(tt.request)
-			
+
 			if tt.expectError {
 				if resp.Error == nil {
 					t.Error("Expected error response")
@@ -828,7 +828,7 @@ func TestHandlePromptsList(t *testing.T) {
 	transport := &mockTransport{}
 	server.SetTransport(transport)
 	server.Start(context.Background())
-	
+
 	// Add prompts
 	prompt1 := protocol.Prompt{
 		Name:        "greeting",
@@ -840,29 +840,29 @@ func TestHandlePromptsList(t *testing.T) {
 			{Name: "name", Required: true},
 		},
 	}
-	
+
 	server.AddPrompt(prompt1, &mockPromptHandler{})
 	server.AddPrompt(prompt2, &mockPromptHandler{})
-	
+
 	// Test prompts/list
 	req := &protocol.JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      1,
 		Method:  "prompts/list",
 	}
-	
+
 	resp := transport.simulateRequest(req)
-	
+
 	if resp.Error != nil {
 		t.Errorf("Unexpected error: %v", resp.Error)
 	}
-	
+
 	// Check result
 	result, ok := resp.Result.(map[string]interface{})
 	if !ok {
 		t.Fatal("Expected result to be a map")
 	}
-	
+
 	prompts, ok := result["prompts"].([]interface{})
 	if !ok {
 		// Try as []protocol.Prompt
@@ -885,7 +885,7 @@ func TestHandlePromptsGet(t *testing.T) {
 	transport := &mockTransport{}
 	server.SetTransport(transport)
 	server.Start(context.Background())
-	
+
 	tests := []struct {
 		name          string
 		setupPrompts  func()
@@ -926,7 +926,7 @@ func TestHandlePromptsGet(t *testing.T) {
 				if !ok {
 					t.Fatal("Expected result to be a map")
 				}
-				
+
 				messages, ok := result["messages"].([]protocol.Content)
 				if !ok {
 					// Try unmarshaling
@@ -935,7 +935,7 @@ func TestHandlePromptsGet(t *testing.T) {
 					json.Unmarshal(messagesJSON, &m)
 					messages = m
 				}
-				
+
 				if len(messages) != 1 {
 					t.Errorf("Expected 1 message, got %d", len(messages))
 				}
@@ -1017,18 +1017,18 @@ func TestHandlePromptsGet(t *testing.T) {
 			expectError: false,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear prompts
 			server.prompts = make(map[string]*PromptRegistration)
-			
+
 			// Setup prompts
 			tt.setupPrompts()
-			
+
 			// Execute request
 			resp := transport.simulateRequest(tt.request)
-			
+
 			if tt.expectError {
 				if resp.Error == nil {
 					t.Error("Expected error response")
@@ -1050,19 +1050,19 @@ func TestHandleUnknownMethod(t *testing.T) {
 	transport := &mockTransport{}
 	server.SetTransport(transport)
 	server.Start(context.Background())
-	
+
 	req := &protocol.JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      1,
 		Method:  "unknown/method",
 	}
-	
+
 	resp := transport.simulateRequest(req)
-	
+
 	if resp.Error == nil {
 		t.Error("Expected error for unknown method")
 	}
-	
+
 	if resp.Error.Code != protocol.MethodNotFound {
 		t.Errorf("Expected MethodNotFound error code, got %d", resp.Error.Code)
 	}
@@ -1094,9 +1094,9 @@ func TestParseParams(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:   "parse array",
-			params: []interface{}{"a", "b", "c"},
-			target: &[]string{},
+			name:        "parse array",
+			params:      []interface{}{"a", "b", "c"},
+			target:      &[]string{},
 			expectError: false,
 		},
 		{
@@ -1110,11 +1110,11 @@ func TestParseParams(t *testing.T) {
 			expectError: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := parseParams(tt.params, tt.target)
-			
+
 			if (err != nil) != tt.expectError {
 				t.Errorf("parseParams() error = %v, expectError %v", err, tt.expectError)
 			}
@@ -1124,7 +1124,7 @@ func TestParseParams(t *testing.T) {
 
 func TestConcurrentAccess(t *testing.T) {
 	server := NewServer("test", "1.0")
-	
+
 	// Simulate concurrent tool additions
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
@@ -1137,7 +1137,7 @@ func TestConcurrentAccess(t *testing.T) {
 			server.AddTool(tool, &mockToolHandler{})
 		}(i)
 	}
-	
+
 	// Simulate concurrent resource additions
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
@@ -1149,7 +1149,7 @@ func TestConcurrentAccess(t *testing.T) {
 			server.AddResource(resource, &mockResourceHandler{})
 		}(i)
 	}
-	
+
 	// Simulate concurrent prompt additions
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
@@ -1161,9 +1161,9 @@ func TestConcurrentAccess(t *testing.T) {
 			server.AddPrompt(prompt, &mockPromptHandler{})
 		}(i)
 	}
-	
+
 	wg.Wait()
-	
+
 	// Verify all items were added
 	if len(server.tools) != 10 {
 		t.Errorf("Expected 10 tools, got %d", len(server.tools))
@@ -1178,17 +1178,17 @@ func TestConcurrentAccess(t *testing.T) {
 
 func TestIsInitialized(t *testing.T) {
 	server := NewServer("test", "1.0")
-	
+
 	// Should not be initialized initially
 	if server.IsInitialized() {
 		t.Error("Expected server to not be initialized initially")
 	}
-	
+
 	// Simulate initialization
 	transport := &mockTransport{}
 	server.SetTransport(transport)
 	server.Start(context.Background())
-	
+
 	initReq := &protocol.JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      1,
@@ -1202,9 +1202,9 @@ func TestIsInitialized(t *testing.T) {
 			},
 		},
 	}
-	
+
 	transport.simulateRequest(initReq)
-	
+
 	// Should be initialized after initialize request
 	if !server.IsInitialized() {
 		t.Error("Expected server to be initialized after initialize request")
@@ -1215,7 +1215,7 @@ func TestIsInitialized(t *testing.T) {
 func BenchmarkAddTool(b *testing.B) {
 	server := NewServer("bench", "1.0")
 	handler := &mockToolHandler{}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		tool := protocol.Tool{
@@ -1227,20 +1227,20 @@ func BenchmarkAddTool(b *testing.B) {
 
 func BenchmarkHandleRequest(b *testing.B) {
 	server := NewServer("bench", "1.0")
-	
+
 	// Add a simple tool
 	tool := protocol.Tool{Name: "bench_tool"}
 	handler := &mockToolHandler{result: "result"}
 	server.AddTool(tool, handler)
-	
+
 	req := &protocol.JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      1,
 		Method:  "tools/list",
 	}
-	
+
 	ctx := context.Background()
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		server.HandleRequest(ctx, req)
@@ -1249,22 +1249,22 @@ func BenchmarkHandleRequest(b *testing.B) {
 
 func BenchmarkConcurrentRequests(b *testing.B) {
 	server := NewServer("bench", "1.0")
-	
+
 	// Add tools
 	for i := 0; i < 10; i++ {
 		tool := protocol.Tool{Name: fmt.Sprintf("tool_%d", i)}
 		handler := &mockToolHandler{result: "result"}
 		server.AddTool(tool, handler)
 	}
-	
+
 	req := &protocol.JSONRPCRequest{
 		JSONRPC: "2.0",
 		ID:      1,
 		Method:  "tools/list",
 	}
-	
+
 	ctx := context.Background()
-	
+
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -1277,26 +1277,26 @@ func BenchmarkConcurrentRequests(b *testing.B) {
 func TestEdgeCases(t *testing.T) {
 	t.Run("nil handler registration", func(t *testing.T) {
 		server := NewServer("test", "1.0")
-		
+
 		// Should not panic with nil handler
 		defer func() {
 			if r := recover(); r != nil {
 				t.Errorf("Unexpected panic: %v", r)
 			}
 		}()
-		
+
 		tool := protocol.Tool{Name: "nil_handler"}
 		server.AddTool(tool, nil)
-		
+
 		// Tool should be registered even with nil handler
 		if _, exists := server.tools["nil_handler"]; !exists {
 			t.Error("Expected tool to be registered")
 		}
 	})
-	
+
 	t.Run("overwrite existing registrations", func(t *testing.T) {
 		server := NewServer("test", "1.0")
-		
+
 		// Add initial tool
 		tool1 := protocol.Tool{
 			Name:        "duplicate",
@@ -1304,7 +1304,7 @@ func TestEdgeCases(t *testing.T) {
 		}
 		handler1 := &mockToolHandler{result: "v1"}
 		server.AddTool(tool1, handler1)
-		
+
 		// Overwrite with new version
 		tool2 := protocol.Tool{
 			Name:        "duplicate",
@@ -1312,7 +1312,7 @@ func TestEdgeCases(t *testing.T) {
 		}
 		handler2 := &mockToolHandler{result: "v2"}
 		server.AddTool(tool2, handler2)
-		
+
 		// Should have the second version
 		reg, exists := server.tools["duplicate"]
 		if !exists {
@@ -1322,24 +1322,24 @@ func TestEdgeCases(t *testing.T) {
 			t.Error("Expected tool to be overwritten")
 		}
 	})
-	
+
 	t.Run("request timeout handling", func(t *testing.T) {
 		server := NewServer("test", "1.0")
 		transport := &mockTransport{}
 		server.SetTransport(transport)
 		server.Start(context.Background())
-		
+
 		// Add a slow tool
 		tool := protocol.Tool{Name: "slow_tool"}
 		handler := &mockToolHandler{
 			result: "should timeout",
 		}
 		server.AddTool(tool, handler)
-		
+
 		// Create context with timeout
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 		defer cancel()
-		
+
 		req := &protocol.JSONRPCRequest{
 			JSONRPC: "2.0",
 			ID:      1,
@@ -1348,10 +1348,10 @@ func TestEdgeCases(t *testing.T) {
 				Name: "slow_tool",
 			},
 		}
-		
+
 		// Simulate request with timeout context
 		resp := server.HandleRequest(ctx, req)
-		
+
 		// Should still get a response (not panic)
 		if resp == nil {
 			t.Error("Expected response even with timeout")

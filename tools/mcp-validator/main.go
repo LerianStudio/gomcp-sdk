@@ -26,9 +26,9 @@ type Validator struct {
 
 func main() {
 	var (
-		serverPath = flag.String("server", "", "Path to MCP server executable")
-		timeout    = flag.Duration("timeout", 30*time.Second, "Validation timeout")
-		verbose    = flag.Bool("verbose", false, "Enable verbose output")
+		serverPath  = flag.String("server", "", "Path to MCP server executable")
+		timeout     = flag.Duration("timeout", 30*time.Second, "Validation timeout")
+		verbose     = flag.Bool("verbose", false, "Enable verbose output")
 		showVersion = flag.Bool("version", false, "Show version")
 	)
 
@@ -106,9 +106,9 @@ type ValidationResults struct {
 }
 
 type TestResult struct {
-	Name    string
-	Passed  bool
-	Message string
+	Name     string
+	Passed   bool
+	Message  string
 	Duration time.Duration
 }
 
@@ -166,7 +166,7 @@ type InitializeResult struct {
 
 func (v *Validator) testInitialize(ctx context.Context, verbose bool) *InitializeResult {
 	start := time.Now()
-	
+
 	// Send initialize request
 	req := protocol.JSONRPCRequest{
 		JSONRPC: "2.0",

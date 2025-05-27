@@ -78,7 +78,7 @@ func TestJSONRPCRequest(t *testing.T) {
 			if decoded.Method != tt.request.Method {
 				t.Errorf("Method mismatch: got %s, want %s", decoded.Method, tt.request.Method)
 			}
-			
+
 			// Compare IDs - handle numeric type conversion
 			var idMatch bool
 			switch v := tt.request.ID.(type) {
@@ -219,7 +219,7 @@ func TestNewJSONRPCError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := NewJSONRPCError(tt.code, tt.message, tt.data)
-			
+
 			if err.Code != tt.code {
 				t.Errorf("Code mismatch: got %d, want %d", err.Code, tt.code)
 			}
@@ -471,15 +471,15 @@ func TestNewToolCallResult(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := NewToolCallResult(tt.content...)
-			
+
 			if result.IsError != tt.expected.IsError {
 				t.Errorf("IsError mismatch: got %v, want %v", result.IsError, tt.expected.IsError)
 			}
-			
+
 			if len(result.Content) != len(tt.expected.Content) {
 				t.Errorf("Content length mismatch: got %d, want %d", len(result.Content), len(tt.expected.Content))
 			}
-			
+
 			for i, content := range result.Content {
 				if i < len(tt.expected.Content) {
 					if content.Type != tt.expected.Content[i].Type {
@@ -516,15 +516,15 @@ func TestNewToolCallError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := NewToolCallError(tt.message)
-			
+
 			if !result.IsError {
 				t.Error("Expected IsError to be true")
 			}
-			
+
 			if len(result.Content) != 1 {
 				t.Errorf("Expected 1 content item, got %d", len(result.Content))
 			}
-			
+
 			if len(result.Content) > 0 {
 				if result.Content[0].Type != "text" {
 					t.Errorf("Expected content type 'text', got %s", result.Content[0].Type)

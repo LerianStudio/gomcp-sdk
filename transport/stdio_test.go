@@ -5,8 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"io"
 	"strings"
 	"sync"
 	"testing"
@@ -125,7 +125,7 @@ func TestStdioTransportStart(t *testing.T) {
 		handler           *mockRequestHandler
 	}{
 		{
-			name: "single valid request",
+			name:  "single valid request",
 			input: `{"jsonrpc":"2.0","id":1,"method":"test","params":{"key":"value"}}` + "\n",
 			expectedResponses: []string{
 				`{"jsonrpc":"2.0","id":1,"result":{"method":"test","params":{"key":"value"}}}`,
@@ -143,7 +143,7 @@ func TestStdioTransportStart(t *testing.T) {
 			handler: newMockRequestHandler(),
 		},
 		{
-			name: "invalid JSON",
+			name:  "invalid JSON",
 			input: `invalid json` + "\n",
 			expectedResponses: []string{
 				`{"jsonrpc":"2.0","error":{"code":-32700,"message":"Parse error","data":"invalid character 'i' looking for beginning of value"}}`,
@@ -151,7 +151,7 @@ func TestStdioTransportStart(t *testing.T) {
 			handler: newMockRequestHandler(),
 		},
 		{
-			name: "empty lines ignored",
+			name:  "empty lines ignored",
 			input: "\n" + `{"jsonrpc":"2.0","id":1,"method":"test"}` + "\n" + "\n",
 			expectedResponses: []string{
 				`{"jsonrpc":"2.0","id":1,"result":{"method":"test","params":null}}`,
@@ -159,7 +159,7 @@ func TestStdioTransportStart(t *testing.T) {
 			handler: newMockRequestHandler(),
 		},
 		{
-			name: "notification (no ID)",
+			name:  "notification (no ID)",
 			input: `{"jsonrpc":"2.0","method":"notify"}` + "\n",
 			handler: func() *mockRequestHandler {
 				h := newMockRequestHandler()
@@ -381,7 +381,7 @@ func TestStdioTransportScannerError(t *testing.T) {
 
 	handler := newMockRequestHandler()
 	err := transport.Start(context.Background(), handler)
-	
+
 	if err == nil {
 		t.Error("Expected error when scanner fails")
 	}
@@ -434,7 +434,7 @@ func TestIsRunning(t *testing.T) {
 
 	// Stop
 	cancel()
-	
+
 	// Wait for Start to return
 	select {
 	case <-errCh:
@@ -495,7 +495,7 @@ func BenchmarkStdioTransportSingleRequest(b *testing.B) {
 		input := strings.NewReader(request)
 		output := &bytes.Buffer{}
 		transport := NewStdioTransportWithIO(input, output)
-		
+
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		transport.Start(ctx, handler)
 		cancel()
@@ -511,7 +511,7 @@ func BenchmarkStdioTransportMultipleRequests(b *testing.B) {
 		input := strings.NewReader(requests)
 		output := &bytes.Buffer{}
 		transport := NewStdioTransportWithIO(input, output)
-		
+
 		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 		transport.Start(ctx, handler)
 		cancel()

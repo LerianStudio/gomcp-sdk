@@ -186,7 +186,7 @@ func NewMiddleware(metrics *Metrics) *Middleware {
 // TrackRequest tracks metrics for an MCP request
 func (m *Middleware) TrackRequest(method string, fn func() error) error {
 	start := time.Now()
-	
+
 	// Increment active requests
 	m.metrics.ActiveRequests.WithLabelValues(method).Inc()
 	defer m.metrics.ActiveRequests.WithLabelValues(method).Dec()

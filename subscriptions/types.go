@@ -46,9 +46,9 @@ type Event struct {
 
 // EventType constants
 const (
-	EventTypeResourceChanged   = "resource/changed"
-	EventTypeResourceDeleted   = "resource/deleted"
-	EventTypeToolsListChanged  = "tools/list_changed"
+	EventTypeResourceChanged      = "resource/changed"
+	EventTypeResourceDeleted      = "resource/deleted"
+	EventTypeToolsListChanged     = "tools/list_changed"
 	EventTypeResourcesListChanged = "resources/list_changed"
 	EventTypePromptsListChanged   = "prompts/list_changed"
 	EventTypeRootsListChanged     = "roots/list_changed"
@@ -58,7 +58,7 @@ const (
 type Filter struct {
 	// For resource subscriptions
 	URIPattern string `json:"uriPattern,omitempty"`
-	
+
 	// For list change subscriptions
 	IncludeDetails bool `json:"includeDetails,omitempty"`
 }

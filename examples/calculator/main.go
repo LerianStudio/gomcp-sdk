@@ -50,7 +50,7 @@ func main() {
 	// Create stdio transport
 	stdioTransport := transport.NewStdioTransport()
 	server.SetTransport(stdioTransport)
-	
+
 	// Start the server
 	log.Println("Calculator MCP server starting...")
 	if err := server.Start(ctx); err != nil {
@@ -82,7 +82,7 @@ func registerAddTool(server *server.Server) {
 
 		result := a + b
 		return map[string]interface{}{
-			"result": result,
+			"result":    result,
 			"operation": fmt.Sprintf("%v + %v = %v", a, b, result),
 		}, nil
 	})
@@ -114,7 +114,7 @@ func registerSubtractTool(server *server.Server) {
 
 		result := a - b
 		return map[string]interface{}{
-			"result": result,
+			"result":    result,
 			"operation": fmt.Sprintf("%v - %v = %v", a, b, result),
 		}, nil
 	})
@@ -146,7 +146,7 @@ func registerMultiplyTool(server *server.Server) {
 
 		result := a * b
 		return map[string]interface{}{
-			"result": result,
+			"result":    result,
 			"operation": fmt.Sprintf("%v × %v = %v", a, b, result),
 		}, nil
 	})
@@ -183,7 +183,7 @@ func registerDivideTool(server *server.Server) {
 
 		result := a / b
 		return map[string]interface{}{
-			"result": result,
+			"result":    result,
 			"operation": fmt.Sprintf("%v ÷ %v = %v", a, b, result),
 		}, nil
 	})
@@ -224,7 +224,7 @@ func registerPowerTool(server *server.Server) {
 		}
 
 		return map[string]interface{}{
-			"result": result,
+			"result":    result,
 			"operation": fmt.Sprintf("%v^%v = %v", base, exponent, result),
 		}, nil
 	})
@@ -255,7 +255,7 @@ func registerSqrtTool(server *server.Server) {
 
 		result := math.Sqrt(number)
 		return map[string]interface{}{
-			"result": result,
+			"result":    result,
 			"operation": fmt.Sprintf("√%v = %v", number, result),
 		}, nil
 	})

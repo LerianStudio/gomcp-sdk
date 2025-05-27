@@ -38,7 +38,7 @@ type Logger struct {
 // NewLogger creates a new structured logger
 func NewLogger(config Config) *Logger {
 	var handler slog.Handler
-	
+
 	opts := &slog.HandlerOptions{
 		Level:     parseLevel(config.Level),
 		AddSource: config.AddSource,
@@ -91,7 +91,7 @@ func (l *Logger) WithFields(fields map[string]interface{}) *Logger {
 	for k, v := range fields {
 		attrs = append(attrs, k, v)
 	}
-	
+
 	return &Logger{
 		Logger: l.Logger.With(attrs...),
 		config: l.config,
@@ -230,15 +230,15 @@ func NewMiddleware(logger *Logger) *Middleware {
 // LogRequest logs incoming requests with recovery
 func (m *Middleware) LogRequest(ctx context.Context, method string, id interface{}, fn func() (interface{}, error)) (result interface{}, err error) {
 	start := time.Now()
-	
+
 	// Log request
 	m.logger.Request(ctx, method, id, nil)
-	
+
 	// Recover from panics
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic recovered: %v", r)
-			
+
 			// Log stack trace
 			buf := make([]byte, 4096)
 			n := runtime.Stack(buf, false)
@@ -249,10 +249,10 @@ func (m *Middleware) LogRequest(ctx context.Context, method string, id interface
 			)
 		}
 	}()
-	
+
 	// Execute function
 	result, err = fn()
-	
+
 	// Log response
 	duration := time.Since(start)
 	if err != nil {
@@ -260,22 +260,22 @@ func (m *Middleware) LogRequest(ctx context.Context, method string, id interface
 	} else {
 		m.logger.Response(ctx, method, id, result, duration)
 	}
-	
+
 	return result, err
 }
 
 // LogTool logs tool execution with recovery
 func (m *Middleware) LogTool(ctx context.Context, toolName string, args interface{}, fn func() (interface{}, error)) (result interface{}, err error) {
 	start := time.Now()
-	
+
 	// Log execution start
 	m.logger.ToolExecution(ctx, toolName, args)
-	
+
 	// Recover from panics
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic recovered: %v", r)
-			
+
 			// Log stack trace
 			buf := make([]byte, 4096)
 			n := runtime.Stack(buf, false)
@@ -286,10 +286,10 @@ func (m *Middleware) LogTool(ctx context.Context, toolName string, args interfac
 			)
 		}
 	}()
-	
+
 	// Execute function
 	result, err = fn()
-	
+
 	// Log result
 	duration := time.Since(start)
 	if err != nil {
@@ -297,7 +297,7 @@ func (m *Middleware) LogTool(ctx context.Context, toolName string, args interfac
 	} else {
 		m.logger.ToolResult(ctx, toolName, result, duration)
 	}
-	
+
 	return result, err
 }
 

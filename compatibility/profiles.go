@@ -2,12 +2,12 @@ package compatibility
 
 // ClientProfile defines the capabilities of a known MCP client
 type ClientProfile struct {
-	Name             string
-	Pattern          string   // Pattern to match in user agent or client info
+	Name              string
+	Pattern           string // Pattern to match in user agent or client info
 	SupportedFeatures []string
-	RequiresFeatures []string // Features that must be present
-	Limitations      []string // Known limitations
-	Workarounds      map[string]string // Feature -> workaround description
+	RequiresFeatures  []string          // Features that must be present
+	Limitations       []string          // Known limitations
+	Workarounds       map[string]string // Feature -> workaround description
 }
 
 // GetKnownProfiles returns all known client profiles
@@ -18,7 +18,7 @@ func GetKnownProfiles() []ClientProfile {
 			Pattern: "claude-desktop",
 			SupportedFeatures: []string{
 				"tools",
-				"resources", 
+				"resources",
 				"prompts",
 			},
 			RequiresFeatures: []string{},
@@ -181,11 +181,11 @@ func GetKnownProfiles() []ClientProfile {
 
 // Feature constants
 const (
-	FeatureTools        = "tools"
-	FeatureResources    = "resources"
-	FeaturePrompts      = "prompts"
-	FeatureDiscovery    = "discovery"
-	FeatureSampling     = "sampling"
-	FeatureRoots        = "roots"
+	FeatureTools         = "tools"
+	FeatureResources     = "resources"
+	FeaturePrompts       = "prompts"
+	FeatureDiscovery     = "discovery"
+	FeatureSampling      = "sampling"
+	FeatureRoots         = "roots"
 	FeatureSubscriptions = "subscriptions"
 )

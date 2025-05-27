@@ -22,22 +22,22 @@ func NewDetector() *Detector {
 func (d *Detector) DetectClient(clientInfo protocol.ClientInfo, capabilities protocol.ClientCapabilities) *ClientProfile {
 	// Try to match based on client name and version
 	clientString := strings.ToLower(clientInfo.Name + " " + clientInfo.Version)
-	
+
 	for _, profile := range d.profiles {
 		if profile.Pattern == ".*" {
 			continue // Skip generic profile for now
 		}
-		
+
 		pattern, err := regexp.Compile("(?i)" + profile.Pattern)
 		if err != nil {
 			continue
 		}
-		
+
 		if pattern.MatchString(clientString) {
 			return &profile
 		}
 	}
-	
+
 	// Check for specific capability signatures
 	if d.hasCapabilitySignature(capabilities, []string{"sampling"}) {
 		// Clients with sampling are likely newer/advanced
@@ -47,14 +47,14 @@ func (d *Detector) DetectClient(clientInfo protocol.ClientInfo, capabilities pro
 			}
 		}
 	}
-	
+
 	// Return generic profile as fallback
 	for _, profile := range d.profiles {
 		if profile.Pattern == ".*" {
 			return &profile
 		}
 	}
-	
+
 	return nil
 }
 
@@ -63,19 +63,19 @@ func (d *Detector) CheckFeatureSupport(profile *ClientProfile, feature string) (
 	if profile == nil {
 		return false, "Unknown client - conservative feature set recommended"
 	}
-	
+
 	// Check if feature is supported
 	for _, f := range profile.SupportedFeatures {
 		if f == feature {
 			return true, ""
 		}
 	}
-	
+
 	// Check for workaround
 	if workaround, exists := profile.Workarounds[feature]; exists {
 		return false, workaround
 	}
-	
+
 	return false, "Feature not supported by " + profile.Name
 }
 
@@ -92,13 +92,13 @@ func (d *Detector) GetSupportedCapabilities(profile *ClientProfile) protocol.Ser
 	caps := protocol.ServerCapabilities{
 		Experimental: make(map[string]interface{}),
 	}
-	
+
 	if profile == nil {
 		// Conservative default
 		caps.Tools = &protocol.ToolCapability{}
 		return caps
 	}
-	
+
 	// Enable capabilities based on client support
 	for _, feature := range profile.SupportedFeatures {
 		switch feature {
@@ -123,14 +123,14 @@ func (d *Detector) GetSupportedCapabilities(profile *ClientProfile) protocol.Ser
 			}
 		}
 	}
-	
+
 	// Add experimental features if discovery is supported
 	if contains(profile.SupportedFeatures, FeatureDiscovery) {
 		caps.Experimental["discovery"] = map[string]interface{}{
 			"enabled": true,
 		}
 	}
-	
+
 	return caps
 }
 

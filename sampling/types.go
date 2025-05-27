@@ -17,10 +17,10 @@ type SamplingMessageContent struct {
 
 // ModelPreferences defines model-specific preferences for sampling
 type ModelPreferences struct {
-	Hints              []ModelHint            `json:"hints,omitempty"`
-	CostPriority       float64                `json:"costPriority,omitempty"`
-	SpeedPriority      float64                `json:"speedPriority,omitempty"`
-	IntelligencePriority float64              `json:"intelligencePriority,omitempty"`
+	Hints                []ModelHint `json:"hints,omitempty"`
+	CostPriority         float64     `json:"costPriority,omitempty"`
+	SpeedPriority        float64     `json:"speedPriority,omitempty"`
+	IntelligencePriority float64     `json:"intelligencePriority,omitempty"`
 }
 
 // ModelHint provides hints about model selection
@@ -42,8 +42,8 @@ type CreateMessageRequest struct {
 
 // CreateMessageResponse is the response structure for sampling/createMessage
 type CreateMessageResponse struct {
-	Role    string                 `json:"role"`
-	Content SamplingMessageContent `json:"content"`
-	Model   string                 `json:"model"`
-	StopReason string              `json:"stopReason,omitempty"`
+	Role       string                 `json:"role"`
+	Content    SamplingMessageContent `json:"content"`
+	Model      string                 `json:"model"`
+	StopReason string                 `json:"stopReason,omitempty"`
 }

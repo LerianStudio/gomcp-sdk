@@ -6,8 +6,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"io"
 	"os"
 	"sync"
 )
@@ -91,7 +91,7 @@ func (t *StdioTransport) Start(ctx context.Context, handler RequestHandler) erro
 				// Channel closed, EOF reached
 				return nil
 			}
-			
+
 			if result.err != nil {
 				return fmt.Errorf("scanning input: %w", result.err)
 			}
@@ -129,7 +129,7 @@ func (t *StdioTransport) Start(ctx context.Context, handler RequestHandler) erro
 func (t *StdioTransport) Stop() error {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
-	
+
 	t.running = false
 	return nil
 }

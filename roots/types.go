@@ -4,10 +4,10 @@ package roots
 type Root struct {
 	// URI is the root URI (e.g., "file:///home/user/documents")
 	URI string `json:"uri"`
-	
+
 	// Name is a human-readable name for the root
 	Name string `json:"name"`
-	
+
 	// Description provides additional context about the root
 	Description string `json:"description,omitempty"`
 }

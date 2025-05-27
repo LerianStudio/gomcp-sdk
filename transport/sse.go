@@ -21,7 +21,7 @@ type SSEConfig struct {
 
 	// SSE-specific settings
 	HeartbeatInterval time.Duration
-	
+
 	// Maximum number of clients
 	MaxClients int
 
@@ -39,23 +39,23 @@ type SSEConfig struct {
 type SSETransport struct {
 	*HTTPTransport
 	sseConfig *SSEConfig
-	
+
 	// Client management
-	clients map[string]*sseClient
+	clients  map[string]*sseClient
 	clientMu sync.RWMutex
-	
+
 	// Event broadcasting
 	broadcast chan *sseEvent
 }
 
 // sseClient represents a connected SSE client
 type sseClient struct {
-	id            string
-	events        chan *sseEvent
-	done          chan struct{}
-	lastEventID   string
-	writer        http.ResponseWriter
-	flusher       http.Flusher
+	id          string
+	events      chan *sseEvent
+	done        chan struct{}
+	lastEventID string
+	writer      http.ResponseWriter
+	flusher     http.Flusher
 }
 
 // sseEvent represents an SSE event
@@ -111,10 +111,10 @@ func (t *SSETransport) Start(ctx context.Context, handler RequestHandler) error 
 	go t.broadcastHandler()
 
 	mux := http.NewServeMux()
-	
+
 	// SSE endpoint
 	mux.HandleFunc(t.sseConfig.EventPath, t.handleSSE)
-	
+
 	// Regular HTTP endpoint for sending commands
 	mux.HandleFunc(t.config.Path, t.handleCommand)
 
@@ -344,7 +344,7 @@ func (t *SSETransport) handleCommand(w http.ResponseWriter, r *http.Request) {
 				Type: "response",
 				Data: resp,
 			}
-			
+
 			select {
 			case client.events <- event:
 				// Response will be sent via SSE

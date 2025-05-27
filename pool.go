@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"sync"
-	
+
 	"github.com/fredcamaral/gomcp-sdk/protocol"
 )
 
@@ -116,9 +116,9 @@ func (dp *JSONDecoderPool) Put(pd *pooledDecoder) {
 
 // SlicePool manages pools of slices of different sizes
 type SlicePool struct {
-	smallPool  sync.Pool  // For slices up to 1KB
-	mediumPool sync.Pool  // For slices up to 16KB
-	largePool  sync.Pool  // For slices up to 256KB
+	smallPool  sync.Pool // For slices up to 1KB
+	mediumPool sync.Pool // For slices up to 16KB
+	largePool  sync.Pool // For slices up to 256KB
 }
 
 // NewSlicePool creates a new slice pool
@@ -164,7 +164,7 @@ func (sp *SlicePool) Put(slice []byte) {
 	for i := range slice {
 		slice[i] = 0
 	}
-	
+
 	size := cap(slice)
 	if size <= 1024 {
 		sp.smallPool.Put(&slice)

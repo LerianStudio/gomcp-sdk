@@ -18,9 +18,9 @@ type JSONRPCRequest struct {
 
 // JSONRPCResponse represents a JSON-RPC response
 type JSONRPCResponse struct {
-	JSONRPC string      `json:"jsonrpc"`
-	ID      interface{} `json:"id,omitempty"`
-	Result  interface{} `json:"result,omitempty"`
+	JSONRPC string        `json:"jsonrpc"`
+	ID      interface{}   `json:"id,omitempty"`
+	Result  interface{}   `json:"result,omitempty"`
 	Error   *JSONRPCError `json:"error,omitempty"`
 }
 
@@ -71,9 +71,9 @@ type Resource struct {
 
 // Prompt represents an MCP prompt template
 type Prompt struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description,omitempty"`
-	Arguments   []PromptArgument       `json:"arguments,omitempty"`
+	Name        string           `json:"name"`
+	Description string           `json:"description,omitempty"`
+	Arguments   []PromptArgument `json:"arguments,omitempty"`
 }
 
 // PromptArgument represents a prompt argument
@@ -99,7 +99,7 @@ type PromptCapability struct {
 	ListChanged bool `json:"listChanged,omitempty"`
 }
 
-// ResourceCapability represents resource capabilities  
+// ResourceCapability represents resource capabilities
 type ResourceCapability struct {
 	Subscribe   bool `json:"subscribe,omitempty"`
 	ListChanged bool `json:"listChanged,omitempty"`
@@ -122,9 +122,9 @@ type RootsCapability struct {
 
 // InitializeRequest represents an initialization request
 type InitializeRequest struct {
-	ProtocolVersion string           `json:"protocolVersion"`
+	ProtocolVersion string             `json:"protocolVersion"`
 	Capabilities    ClientCapabilities `json:"capabilities"`
-	ClientInfo      ClientInfo       `json:"clientInfo"`
+	ClientInfo      ClientInfo         `json:"clientInfo"`
 }
 
 // ClientCapabilities represents client capabilities

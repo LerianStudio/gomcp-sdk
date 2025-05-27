@@ -82,7 +82,7 @@ func (h *HealthChecker) CheckHealth(ctx context.Context) map[string]*Result {
 		wg.Add(1)
 		go func(n string, c Check) {
 			defer wg.Done()
-			
+
 			checkCtx, cancel := context.WithTimeout(ctx, h.checkTimeout)
 			defer cancel()
 
@@ -137,9 +137,9 @@ func (h *HealthChecker) GetOverallStatus() Status {
 func (h *HealthChecker) HTTPHandlerLive() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		
+
 		response := map[string]interface{}{
-			"status": "alive",
+			"status":    "alive",
 			"timestamp": time.Now().UTC(),
 		}
 
@@ -351,10 +351,10 @@ func CheckMemory(maxUsagePercent float64) Check {
 		usagePercent := memInfo.UsedPercent
 
 		details := map[string]interface{}{
-			"total_bytes":   memInfo.Total,
-			"used_bytes":    memInfo.Used,
-			"free_bytes":    memInfo.Free,
-			"used_percent":  fmt.Sprintf("%.2f%%", usagePercent),
+			"total_bytes":  memInfo.Total,
+			"used_bytes":   memInfo.Used,
+			"free_bytes":   memInfo.Free,
+			"used_percent": fmt.Sprintf("%.2f%%", usagePercent),
 		}
 
 		if usagePercent > maxUsagePercent {

@@ -39,7 +39,7 @@ type RESTConfig struct {
 // RESTTransport implements a RESTful API compatibility layer for MCP
 type RESTTransport struct {
 	*HTTPTransport
-	restConfig *RESTConfig
+	restConfig  *RESTConfig
 	rateLimiter *rateLimiter
 }
 
@@ -76,7 +76,7 @@ func (t *RESTTransport) Start(ctx context.Context, handler RequestHandler) error
 	t.handler = handler
 
 	mux := http.NewServeMux()
-	
+
 	// Setup REST routes
 	t.setupRoutes(mux)
 
@@ -351,7 +351,7 @@ func (t *RESTTransport) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	health := map[string]interface{}{
-		"status": "healthy",
+		"status":    "healthy",
 		"timestamp": time.Now().Unix(),
 	}
 
@@ -385,7 +385,7 @@ func (t *RESTTransport) handleDocs(w http.ResponseWriter, r *http.Request) {
     </script>
 </body>
 </html>`
-	
+
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(html))
 }
@@ -400,7 +400,7 @@ func (t *RESTTransport) handleOpenAPISpec(w http.ResponseWriter, r *http.Request
 // writeRESTResponse converts JSON-RPC response to REST response
 func (t *RESTTransport) writeRESTResponse(w http.ResponseWriter, resp *protocol.JSONRPCResponse) {
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	// Add custom headers
 	for k, v := range t.config.CustomHeaders {
 		w.Header().Set(k, v)
@@ -419,7 +419,7 @@ func (t *RESTTransport) writeRESTResponse(w http.ResponseWriter, resp *protocol.
 		case protocol.InvalidParams:
 			statusCode = http.StatusBadRequest
 		}
-		
+
 		w.WriteHeader(statusCode)
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": map[string]interface{}{
@@ -490,14 +490,14 @@ func (t *RESTTransport) rateLimitMiddleware(next http.Handler) http.Handler {
 func (t *RESTTransport) loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		
+
 		// Wrap response writer to capture status code
 		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-		
+
 		next.ServeHTTP(wrapped, r)
-		
+
 		duration := time.Since(start)
-		fmt.Printf("[%s] %s %s %d %v\n", 
+		fmt.Printf("[%s] %s %s %d %v\n",
 			time.Now().Format(time.RFC3339),
 			r.Method,
 			r.URL.Path,
@@ -644,17 +644,17 @@ func getClientIP(r *http.Request) string {
 			return strings.TrimSpace(ips[0])
 		}
 	}
-	
+
 	// Check X-Real-IP header
 	if xri := r.Header.Get("X-Real-IP"); xri != "" {
 		return xri
 	}
-	
+
 	// Fall back to remote address
 	if idx := strings.LastIndex(r.RemoteAddr, ":"); idx != -1 {
 		return r.RemoteAddr[:idx]
 	}
-	
+
 	return r.RemoteAddr
 }
 

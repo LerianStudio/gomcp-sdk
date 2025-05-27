@@ -25,13 +25,13 @@ type TestServer struct {
 func NewTestServer(name, version string) *TestServer {
 	srv := server.NewServer(name, version)
 	client := NewTestClient()
-	
+
 	// Create transport with test client's IO
 	trans := transport.NewStdioTransportWithIO(client.GetServerInput(), client.GetServerOutput())
 	srv.SetTransport(trans)
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &TestServer{
 		Server:    srv,
 		transport: trans,
@@ -50,10 +50,10 @@ func (ts *TestServer) Start() error {
 		defer ts.wg.Done()
 		ts.client.ReadResponses(ts.ctx)
 	}()
-	
+
 	// Give the reader time to start
 	time.Sleep(50 * time.Millisecond)
-	
+
 	// Start server in background
 	ts.wg.Add(1)
 	go func() {
@@ -61,7 +61,7 @@ func (ts *TestServer) Start() error {
 		close(ts.started)
 		ts.Server.Start(ts.ctx)
 	}()
-	
+
 	// Wait for server to actually start
 	select {
 	case <-ts.started:
@@ -69,10 +69,10 @@ func (ts *TestServer) Start() error {
 	case <-time.After(2 * time.Second):
 		return fmt.Errorf("server failed to start within timeout")
 	}
-	
+
 	// Give server a bit more time to be fully ready
 	time.Sleep(100 * time.Millisecond)
-	
+
 	return nil
 }
 
@@ -82,13 +82,13 @@ func (ts *TestServer) Stop() error {
 	if err := ts.client.Close(); err != nil {
 		return err
 	}
-	
+
 	// Then cancel context
 	ts.cancel()
-	
+
 	// Wait for goroutines to finish
 	ts.wg.Wait()
-	
+
 	return nil
 }
 
@@ -99,14 +99,14 @@ func (ts *TestServer) Client() *TestClient {
 
 // ServerBuilder provides a fluent API for building test servers
 type ServerBuilder struct {
-	server          *TestServer
-	tools           []toolConfig
-	resources       []resourceConfig
-	prompts         []promptConfig
-	autoStart       bool
-	initialized     bool
-	clientName      string
-	clientVersion   string
+	server        *TestServer
+	tools         []toolConfig
+	resources     []resourceConfig
+	prompts       []promptConfig
+	autoStart     bool
+	initialized   bool
+	clientName    string
+	clientVersion string
 }
 
 type toolConfig struct {
@@ -162,7 +162,7 @@ func (b *ServerBuilder) WithResource(uri, name string, content string) *ServerBu
 			Text: content,
 		}}, nil
 	})
-	
+
 	b.resources = append(b.resources, resourceConfig{
 		resource: protocol.Resource{
 			URI:      uri,
@@ -182,7 +182,7 @@ func (b *ServerBuilder) WithPrompt(name string, content string) *ServerBuilder {
 			Text: content,
 		}}, nil
 	})
-	
+
 	b.prompts = append(b.prompts, promptConfig{
 		prompt: protocol.Prompt{
 			Name:        name,
@@ -214,24 +214,24 @@ func (b *ServerBuilder) Build() *TestServer {
 	for _, tc := range b.tools {
 		b.server.AddTool(tc.tool, tc.handler)
 	}
-	
+
 	// Add all configured resources
 	for _, rc := range b.resources {
 		b.server.AddResource(rc.resource, rc.handler)
 	}
-	
+
 	// Add all configured prompts
 	for _, pc := range b.prompts {
 		b.server.AddPrompt(pc.prompt, pc.handler)
 	}
-	
+
 	// Start if configured
 	if b.autoStart {
 		if err := b.server.Start(); err != nil {
 			panic(err)
 		}
 	}
-	
+
 	// Initialize if configured
 	if b.initialized && b.clientName != "" {
 		go func() {
@@ -239,7 +239,7 @@ func (b *ServerBuilder) Build() *TestServer {
 			b.server.Client().Initialize(context.Background(), b.clientName, b.clientVersion)
 		}()
 	}
-	
+
 	return b.server
 }
 

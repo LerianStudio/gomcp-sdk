@@ -9,7 +9,7 @@
 // Create a simple MCP server with a tool:
 //
 //	server := mcp.NewServer("my-app", "1.0.0")
-//	
+//
 //	tool := mcp.NewTool(
 //	    "greet",
 //	    "Greet a user",
@@ -17,14 +17,14 @@
 //	        "name": mcp.StringParam("Name to greet", true),
 //	    }, []string{"name"}),
 //	)
-//	
+//
 //	server.AddTool(tool, mcp.ToolHandlerFunc(func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 //	    name := params["name"].(string)
 //	    return map[string]interface{}{
 //	        "greeting": fmt.Sprintf("Hello, %s!", name),
 //	    }, nil
 //	}))
-//	
+//
 //	server.Start(context.Background(), mcp.NewStdioTransport())
 //
 // # Architecture
@@ -159,7 +159,7 @@ func NewStdioTransport() transport.Transport {
 //	        "message": fmt.Sprintf("Hello, %s!", name),
 //	    }, nil
 //	})
-//	
+//
 //	server.AddTool(tool, handler)
 func ToolHandlerFunc(f func(ctx context.Context, params map[string]interface{}) (interface{}, error)) protocol.ToolHandler {
 	return protocol.ToolHandlerFunc(f)
@@ -172,18 +172,18 @@ func ToolHandlerFunc(f func(ctx context.Context, params map[string]interface{}) 
 //	handler := mcp.ResourceHandlerFunc(func(ctx context.Context, uri string) ([]protocol.Content, error) {
 //	    // Extract path from URI
 //	    path := strings.TrimPrefix(uri, "file:///")
-//	    
+//
 //	    // Read file content
 //	    content, err := os.ReadFile(path)
 //	    if err != nil {
 //	        return nil, err
 //	    }
-//	    
+//
 //	    return []protocol.Content{
 //	        {Type: "text", Text: string(content)},
 //	    }, nil
 //	})
-//	
+//
 //	server.AddResource(resource, handler)
 type ResourceHandlerFunc func(ctx context.Context, uri string) ([]protocol.Content, error)
 
@@ -246,7 +246,7 @@ func BooleanParam(description string, required bool) map[string]interface{} {
 //
 // Example:
 //
-//	schema := mcp.ObjectSchema("Search parameters", 
+//	schema := mcp.ObjectSchema("Search parameters",
 //	    map[string]interface{}{
 //	        "query": mcp.StringParam("Search query", true),
 //	        "limit": map[string]interface{}{
@@ -279,10 +279,10 @@ func ObjectSchema(description string, properties map[string]interface{}, require
 // Example:
 //
 //	// Array of strings
-//	tagsSchema := mcp.ArraySchema("List of tags", 
+//	tagsSchema := mcp.ArraySchema("List of tags",
 //	    map[string]interface{}{"type": "string"},
 //	)
-//	
+//
 //	// Array of objects
 //	filesSchema := mcp.ArraySchema("List of files to process",
 //	    mcp.ObjectSchema("File info", map[string]interface{}{

@@ -61,7 +61,7 @@ func (p *Pipeline) Execute(ctx context.Context, request interface{}, finalHandle
 			return middleware.Process(ctx, req, currentHandler)
 		}
 	}
-	
+
 	// Execute the chain
 	return handler(ctx, request)
 }
@@ -84,15 +84,15 @@ func NewLoggingMiddleware(logger *slog.Logger) *LoggingMiddleware {
 // Process implements the Middleware interface
 func (m *LoggingMiddleware) Process(ctx context.Context, request interface{}, next Handler) (interface{}, error) {
 	start := time.Now()
-	
+
 	// Log the request
 	m.logger.InfoContext(ctx, "processing request",
 		"type", fmt.Sprintf("%T", request),
 		"request", request)
-	
+
 	// Call the next handler
 	response, err := next(ctx, request)
-	
+
 	// Log the response
 	duration := time.Since(start)
 	if err != nil {
@@ -106,7 +106,7 @@ func (m *LoggingMiddleware) Process(ctx context.Context, request interface{}, ne
 			"duration", duration,
 			"response_type", fmt.Sprintf("%T", response))
 	}
-	
+
 	return response, err
 }
 
@@ -130,7 +130,7 @@ func (m *RecoveryMiddleware) Process(ctx context.Context, request interface{}, n
 			m.logger.ErrorContext(ctx, "panic recovered",
 				"panic", r,
 				"request", request)
-			
+
 			// Convert panic to error
 			switch v := r.(type) {
 			case error:
@@ -138,12 +138,12 @@ func (m *RecoveryMiddleware) Process(ctx context.Context, request interface{}, n
 			default:
 				err = fmt.Errorf("panic: %v", v)
 			}
-			
+
 			// Return error response
 			if req, ok := request.(*protocol.JSONRPCRequest); ok {
 				response = &protocol.JSONRPCResponse{
 					JSONRPC: "2.0",
-					ID: req.ID,
+					ID:      req.ID,
 					Error: &protocol.JSONRPCError{
 						Code:    -32603,
 						Message: "Internal server error",
@@ -152,7 +152,7 @@ func (m *RecoveryMiddleware) Process(ctx context.Context, request interface{}, n
 			}
 		}
 	}()
-	
+
 	return next(ctx, request)
 }
 
@@ -179,14 +179,14 @@ func NewMetricsMiddleware(logger *slog.Logger) *MetricsMiddleware {
 func (m *MetricsMiddleware) Process(ctx context.Context, request interface{}, next Handler) (interface{}, error) {
 	start := time.Now()
 	requestType := fmt.Sprintf("%T", request)
-	
+
 	// Call the next handler
 	response, err := next(ctx, request)
-	
+
 	// Record metrics
 	duration := time.Since(start)
 	m.recordMetrics(requestType, duration, err)
-	
+
 	return response, err
 }
 
@@ -194,7 +194,7 @@ func (m *MetricsMiddleware) Process(ctx context.Context, request interface{}, ne
 func (m *MetricsMiddleware) recordMetrics(requestType string, duration time.Duration, _ error) {
 	m.requestCount[requestType]++
 	m.requestLatency[requestType] = append(m.requestLatency[requestType], duration)
-	
+
 	// Log metrics periodically (in production, you'd export to Prometheus/etc)
 	if m.requestCount[requestType]%100 == 0 {
 		m.logger.Info("request metrics",
@@ -210,7 +210,7 @@ func (m *MetricsMiddleware) calculateAvgLatency(requestType string) time.Duratio
 	if len(latencies) == 0 {
 		return 0
 	}
-	
+
 	var total time.Duration
 	for _, d := range latencies {
 		total += d
@@ -242,7 +242,7 @@ func (m *ContextMiddleware) Process(ctx context.Context, request interface{}, ne
 	for key, value := range m.values {
 		ctx = context.WithValue(ctx, key, value)
 	}
-	
+
 	return next(ctx, request)
 }
 
@@ -268,20 +268,20 @@ func (m *TimeoutMiddleware) Process(ctx context.Context, request interface{}, ne
 	// Create a context with timeout
 	ctx, cancel := context.WithTimeout(ctx, m.timeout)
 	defer cancel()
-	
+
 	// Channel to receive the result
 	type result struct {
 		response interface{}
 		err      error
 	}
 	resultChan := make(chan result, 1)
-	
+
 	// Execute the handler in a goroutine
 	go func() {
 		response, err := next(ctx, request)
 		resultChan <- result{response, err}
 	}()
-	
+
 	// Wait for either the result or timeout
 	select {
 	case res := <-resultChan:
@@ -290,12 +290,12 @@ func (m *TimeoutMiddleware) Process(ctx context.Context, request interface{}, ne
 		m.logger.ErrorContext(ctx, "request timeout",
 			"timeout", m.timeout,
 			"request", request)
-		
+
 		// Return timeout error
 		if req, ok := request.(*protocol.JSONRPCRequest); ok {
 			return &protocol.JSONRPCResponse{
 				JSONRPC: "2.0",
-				ID: req.ID,
+				ID:      req.ID,
 				Error: &protocol.JSONRPCError{
 					Code:    -32603,
 					Message: "Request timeout",

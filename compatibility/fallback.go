@@ -24,7 +24,7 @@ func NewFallbackHandler(profile *ClientProfile) *FallbackHandler {
 func (f *FallbackHandler) HandleUnsupportedMethod(method string) *protocol.JSONRPCResponse {
 	feature := f.methodToFeature(method)
 	supported, workaround := f.detector.CheckFeatureSupport(f.profile, feature)
-	
+
 	if supported {
 		// Feature should be supported, likely an implementation issue
 		return &protocol.JSONRPCResponse{
@@ -36,14 +36,14 @@ func (f *FallbackHandler) HandleUnsupportedMethod(method string) *protocol.JSONR
 			),
 		}
 	}
-	
+
 	// Provide helpful error with workaround
 	errorData := map[string]interface{}{
 		"feature":    feature,
 		"client":     f.profile.Name,
 		"workaround": workaround,
 	}
-	
+
 	return &protocol.JSONRPCResponse{
 		JSONRPC: "2.0",
 		Error: protocol.NewJSONRPCError(
@@ -67,7 +67,7 @@ func (f *FallbackHandler) ConvertResourceToTool(uri string) *protocol.ToolCallRe
 // ConvertPromptToTool converts a prompt to a tool
 func (f *FallbackHandler) ConvertPromptToTool(prompt protocol.Prompt, args map[string]interface{}) *protocol.ToolCallRequest {
 	return &protocol.ToolCallRequest{
-		Name: fmt.Sprintf("prompt_%s", prompt.Name),
+		Name:      fmt.Sprintf("prompt_%s", prompt.Name),
 		Arguments: args,
 	}
 }
@@ -78,7 +78,7 @@ func (f *FallbackHandler) WrapToolsWithCompatibility(tools []protocol.Tool) []pr
 	if f.profile == nil || contains(f.profile.SupportedFeatures, FeatureTools) {
 		return tools // No wrapping needed
 	}
-	
+
 	// For clients without tool support, return empty
 	return []protocol.Tool{}
 }
@@ -91,13 +91,13 @@ func (f *FallbackHandler) SimplifyResponse(response interface{}) interface{} {
 		if len(v.Content) == 1 && v.Content[0].Type == "text" {
 			return v // Already simple
 		}
-		
+
 		// Convert to simple text
 		simplified := &protocol.ToolCallResult{
 			Content: []protocol.Content{},
 			IsError: v.IsError,
 		}
-		
+
 		for _, content := range v.Content {
 			if content.Type == "text" {
 				simplified.Content = append(simplified.Content, content)
@@ -108,9 +108,9 @@ func (f *FallbackHandler) SimplifyResponse(response interface{}) interface{} {
 				}
 			}
 		}
-		
+
 		return simplified
-		
+
 	default:
 		return response
 	}

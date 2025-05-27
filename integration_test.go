@@ -20,7 +20,7 @@ func TestFullMCPFlow(t *testing.T) {
 			op, _ := params["operation"].(string)
 			a, _ := params["a"].(float64)
 			b, _ := params["b"].(float64)
-			
+
 			switch op {
 			case "add":
 				return fmt.Sprintf("%v", a+b), nil
@@ -40,14 +40,14 @@ func TestFullMCPFlow(t *testing.T) {
 		WithResource("file:///readme.txt", "readme.txt", "This is a test file").
 		WithPrompt("greeting", "Hello, {{name}}!").
 		Build()
-	
+
 	defer srv.Stop()
-	
+
 	testutil.StartServerWithInit(t, srv, "test-client", "1.0.0")
-	
+
 	client := srv.Client()
 	ctx := context.Background()
-	
+
 	// Test 1: Initialize (already done)
 	t.Run("initialization", func(t *testing.T) {
 		// Server already initialized, just verify connectivity
@@ -56,24 +56,24 @@ func TestFullMCPFlow(t *testing.T) {
 			t.Fatalf("Failed to list tools: %v", err)
 		}
 	})
-	
+
 	// Test 2: List tools
 	t.Run("list_tools", func(t *testing.T) {
 		tools, err := client.ListTools(ctx)
 		if err != nil {
 			t.Fatalf("Failed to list tools: %v", err)
 		}
-		
+
 		if len(tools) != 2 {
 			t.Errorf("Expected 2 tools, got %d", len(tools))
 		}
-		
+
 		// Check tool names
 		toolNames := make(map[string]bool)
 		for _, tool := range tools {
 			toolNames[tool.Name] = true
 		}
-		
+
 		if !toolNames["echo"] {
 			t.Error("Expected 'echo' tool")
 		}
@@ -81,23 +81,23 @@ func TestFullMCPFlow(t *testing.T) {
 			t.Error("Expected 'calculator' tool")
 		}
 	})
-	
+
 	// Test 3: Call tools
 	t.Run("call_echo_tool", func(t *testing.T) {
 		result, err := client.CallTool(ctx, "echo", nil)
 		if err != nil {
 			t.Fatalf("Failed to call echo tool: %v", err)
 		}
-		
+
 		if result.IsError {
 			t.Error("Expected successful result")
 		}
-		
+
 		if len(result.Content) != 1 || result.Content[0].Text != "echoed" {
 			t.Errorf("Expected 'echoed' result, got %v", result.Content)
 		}
 	})
-	
+
 	t.Run("call_calculator_tool", func(t *testing.T) {
 		// Test addition
 		result, err := client.CallTool(ctx, "calculator", map[string]interface{}{
@@ -108,15 +108,15 @@ func TestFullMCPFlow(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to call calculator: %v", err)
 		}
-		
+
 		if result.IsError {
 			t.Error("Expected successful result")
 		}
-		
+
 		if len(result.Content) != 1 || result.Content[0].Text != "31" {
 			t.Errorf("Expected '31' result, got %v", result.Content)
 		}
-		
+
 		// Test division by zero
 		result, err = client.CallTool(ctx, "calculator", map[string]interface{}{
 			"operation": "divide",
@@ -126,12 +126,12 @@ func TestFullMCPFlow(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to call calculator: %v", err)
 		}
-		
+
 		if !result.IsError {
 			t.Error("Expected error result for division by zero")
 		}
 	})
-	
+
 	// Test 4: Resources
 	t.Run("resources", func(t *testing.T) {
 		// List resources
@@ -139,16 +139,16 @@ func TestFullMCPFlow(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to send resources/list: %v", err)
 		}
-		
+
 		resp, err := client.WaitForResponse(ctx, id)
 		if err != nil {
 			t.Fatalf("Failed to get response: %v", err)
 		}
-		
+
 		if resp.Error != nil {
 			t.Fatalf("Got error response: %s", resp.Error.Message)
 		}
-		
+
 		// Read resource
 		id, err = client.SendRequest("resources/read", map[string]interface{}{
 			"uri": "file:///readme.txt",
@@ -156,17 +156,17 @@ func TestFullMCPFlow(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to send resources/read: %v", err)
 		}
-		
+
 		resp, err = client.WaitForResponse(ctx, id)
 		if err != nil {
 			t.Fatalf("Failed to get response: %v", err)
 		}
-		
+
 		if resp.Error != nil {
 			t.Fatalf("Got error response: %s", resp.Error.Message)
 		}
 	})
-	
+
 	// Test 5: Prompts
 	t.Run("prompts", func(t *testing.T) {
 		// List prompts
@@ -174,16 +174,16 @@ func TestFullMCPFlow(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to send prompts/list: %v", err)
 		}
-		
+
 		resp, err := client.WaitForResponse(ctx, id)
 		if err != nil {
 			t.Fatalf("Failed to get response: %v", err)
 		}
-		
+
 		if resp.Error != nil {
 			t.Fatalf("Got error response: %s", resp.Error.Message)
 		}
-		
+
 		// Get prompt
 		id, err = client.SendRequest("prompts/get", map[string]interface{}{
 			"name": "greeting",
@@ -194,12 +194,12 @@ func TestFullMCPFlow(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to send prompts/get: %v", err)
 		}
-		
+
 		resp, err = client.WaitForResponse(ctx, id)
 		if err != nil {
 			t.Fatalf("Failed to get response: %v", err)
 		}
-		
+
 		if resp.Error != nil {
 			t.Fatalf("Got error response: %s", resp.Error.Message)
 		}
@@ -215,7 +215,7 @@ func TestConcurrentOperations(t *testing.T) {
 			if delay == 0 {
 				delay = 100
 			}
-			
+
 			select {
 			case <-time.After(time.Duration(delay) * time.Millisecond):
 				return "completed", nil
@@ -224,25 +224,25 @@ func TestConcurrentOperations(t *testing.T) {
 			}
 		})).
 		Build()
-	
+
 	defer srv.Stop()
-	
+
 	testutil.StartServerWithInit(t, srv, "concurrent-client", "1.0.0")
-	
+
 	client := srv.Client()
 	ctx := context.Background()
-	
+
 	t.Run("concurrent_tool_calls", func(t *testing.T) {
 		const numCalls = 50
 		var wg sync.WaitGroup
 		errors := make(chan error, numCalls)
-		
+
 		// Make concurrent calls to counter
 		for i := 0; i < numCalls; i++ {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				
+
 				result, err := client.CallTool(ctx, "counter", map[string]interface{}{
 					"increment": 1,
 				})
@@ -250,22 +250,22 @@ func TestConcurrentOperations(t *testing.T) {
 					errors <- err
 					return
 				}
-				
+
 				if result.IsError {
 					errors <- fmt.Errorf("tool call failed: %v", result.Content)
 				}
 			}()
 		}
-		
+
 		// Wait for all calls to complete
 		wg.Wait()
 		close(errors)
-		
+
 		// Check for errors
 		for err := range errors {
 			t.Errorf("Concurrent call failed: %v", err)
 		}
-		
+
 		// Verify final count
 		result, err := client.CallTool(ctx, "counter", map[string]interface{}{
 			"get": true,
@@ -273,28 +273,28 @@ func TestConcurrentOperations(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to get counter: %v", err)
 		}
-		
+
 		if len(result.Content) != 1 {
 			t.Fatal("Expected one content item")
 		}
-		
+
 		// Counter should be numCalls
 		if result.Content[0].Text != fmt.Sprintf("%d", numCalls) {
 			t.Errorf("Expected counter to be %d, got %s", numCalls, result.Content[0].Text)
 		}
 	})
-	
+
 	t.Run("mixed_concurrent_operations", func(t *testing.T) {
 		var wg sync.WaitGroup
 		errors := make(chan error, 100)
-		
+
 		// Mix of different operations
 		for i := 0; i < 10; i++ {
 			// Tool calls
 			wg.Add(1)
 			go func(idx int) {
 				defer wg.Done()
-				
+
 				_, err := client.CallTool(ctx, "slow", map[string]interface{}{
 					"delay": float64(10 + idx),
 				})
@@ -302,55 +302,55 @@ func TestConcurrentOperations(t *testing.T) {
 					errors <- err
 				}
 			}(i)
-			
+
 			// List operations
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				
+
 				_, err := client.ListTools(ctx)
 				if err != nil {
 					errors <- err
 				}
 			}()
-			
+
 			// Invalid requests
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				
+
 				id, err := client.SendRequest("invalid/method", nil)
 				if err != nil {
 					errors <- err
 					return
 				}
-				
+
 				resp, err := client.WaitForResponse(ctx, id)
 				if err != nil {
 					errors <- err
 					return
 				}
-				
+
 				if resp.Error == nil || resp.Error.Code != protocol.MethodNotFound {
 					errors <- fmt.Errorf("expected method not found error")
 				}
 			}()
 		}
-		
+
 		// Wait for completion
 		done := make(chan bool)
 		go func() {
 			wg.Wait()
 			close(done)
 		}()
-		
+
 		select {
 		case <-done:
 			// Success
 		case <-time.After(5 * time.Second):
 			t.Fatal("Concurrent operations timed out")
 		}
-		
+
 		close(errors)
 		for err := range errors {
 			t.Errorf("Operation failed: %v", err)
@@ -376,20 +376,20 @@ func TestErrorScenarios(t *testing.T) {
 			}
 		})).
 		Build()
-	
+
 	defer srv.Stop()
-	
+
 	testutil.StartServerWithInit(t, srv, "error-client", "1.0.0")
-	
+
 	client := srv.Client()
 	ctx := context.Background()
-	
+
 	tests := []struct {
-		name           string
-		method         string
-		params         interface{}
-		expectedError  bool
-		expectedCode   int
+		name          string
+		method        string
+		params        interface{}
+		expectedError bool
+		expectedCode  int
 	}{
 		{
 			name:          "unknown_method",
@@ -442,19 +442,19 @@ func TestErrorScenarios(t *testing.T) {
 			expectedCode:  protocol.MethodNotFound,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			id, err := client.SendRequest(tt.method, tt.params)
 			if err != nil {
 				t.Fatalf("Failed to send request: %v", err)
 			}
-			
+
 			resp, err := client.WaitForResponse(ctx, id)
 			if err != nil {
 				t.Fatalf("Failed to get response: %v", err)
 			}
-			
+
 			if tt.expectedError {
 				if resp.Error == nil {
 					t.Fatal("Expected error response but got success")
@@ -474,7 +474,7 @@ func TestErrorScenarios(t *testing.T) {
 // TestNotifications tests notification handling (no response expected)
 func TestNotifications(t *testing.T) {
 	notificationReceived := make(chan string, 10)
-	
+
 	srv := testutil.NewServerBuilder("notification-test-server", "1.0.0").
 		WithTool("notify", "Sends notifications", protocol.ToolHandlerFunc(func(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 			msg, _ := params["message"].(string)
@@ -485,13 +485,13 @@ func TestNotifications(t *testing.T) {
 			return "notification sent", nil
 		})).
 		Build()
-	
+
 	defer srv.Stop()
-	
+
 	testutil.StartServerWithInit(t, srv, "notification-client", "1.0.0")
-	
+
 	client := srv.Client()
-	
+
 	t.Run("send_notification", func(t *testing.T) {
 		// Send notification (no ID, so no response expected)
 		err := client.SendNotification("tools/call", protocol.ToolCallRequest{
@@ -503,10 +503,10 @@ func TestNotifications(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to send notification: %v", err)
 		}
-		
+
 		// Give time for processing
 		time.Sleep(100 * time.Millisecond)
-		
+
 		// Check if notification was received
 		select {
 		case msg := <-notificationReceived:
@@ -535,30 +535,30 @@ func TestLargePayloads(t *testing.T) {
 			if size == 0 {
 				size = 1024
 			}
-			
+
 			// Generate data
 			data := make([]byte, int(size))
 			for i := range data {
 				data[i] = byte('A' + (i % 26))
 			}
-			
+
 			return string(data), nil
 		})).
 		Build()
-	
+
 	defer srv.Stop()
-	
+
 	testutil.StartServerWithInit(t, srv, "large-payload-client", "1.0.0")
-	
+
 	client := srv.Client()
 	ctx := context.Background()
-	
+
 	sizes := []int{
-		1024,       // 1KB
-		1024 * 10,  // 10KB
-		1024 * 50,  // 50KB - Reduced to avoid pipe buffer issues
+		1024,      // 1KB
+		1024 * 10, // 10KB
+		1024 * 50, // 50KB - Reduced to avoid pipe buffer issues
 	}
-	
+
 	for _, size := range sizes {
 		t.Run(fmt.Sprintf("payload_%d_bytes", size), func(t *testing.T) {
 			// Generate large input
@@ -566,7 +566,7 @@ func TestLargePayloads(t *testing.T) {
 			for i := range largeData {
 				largeData[i] = byte('X')
 			}
-			
+
 			// Send large request
 			result, err := client.CallTool(ctx, "process_large", map[string]interface{}{
 				"data": string(largeData),
@@ -574,11 +574,11 @@ func TestLargePayloads(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to process large data: %v", err)
 			}
-			
+
 			if result.IsError {
 				t.Fatalf("Tool returned error: %v", result.Content)
 			}
-			
+
 			// Test large response
 			result, err = client.CallTool(ctx, "generate_large", map[string]interface{}{
 				"size": float64(size),
@@ -586,11 +586,11 @@ func TestLargePayloads(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to generate large data: %v", err)
 			}
-			
+
 			if result.IsError {
 				t.Fatalf("Tool returned error: %v", result.Content)
 			}
-			
+
 			if len(result.Content) != 1 || len(result.Content[0].Text) != size {
 				t.Errorf("Expected %d bytes in response, got %d", size, len(result.Content[0].Text))
 			}
@@ -601,14 +601,14 @@ func TestLargePayloads(t *testing.T) {
 // TestScenarioRunner tests using the scenario runner
 func TestScenarioRunner(t *testing.T) {
 	runner := testutil.NewScenarioRunner(t)
-	
+
 	// Add common scenarios
 	runner.AddScenario(testutil.CommonScenarios.BasicToolCall("test_tool", "test result"))
 	runner.AddScenario(testutil.CommonScenarios.ErrorHandling())
 	runner.AddScenario(testutil.CommonScenarios.ConcurrentRequests(10))
 	runner.AddScenario(testutil.CommonScenarios.ResourceReadWrite())
 	runner.AddScenario(testutil.CommonScenarios.PromptGeneration())
-	
+
 	// Run all scenarios
 	runner.Run()
 }
@@ -623,15 +623,15 @@ type counterHandler struct {
 func (h *counterHandler) Handle(ctx context.Context, params map[string]interface{}) (interface{}, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	
+
 	if increment, ok := params["increment"].(float64); ok {
 		h.count += int(increment)
 		return fmt.Sprintf("%d", h.count), nil
 	}
-	
+
 	if _, ok := params["get"].(bool); ok {
 		return fmt.Sprintf("%d", h.count), nil
 	}
-	
+
 	return nil, errors.New("invalid parameters")
 }

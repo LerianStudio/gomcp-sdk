@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
-	
+
 	mcp "github.com/fredcamaral/gomcp-sdk"
 	"github.com/fredcamaral/gomcp-sdk/protocol"
 	"github.com/fredcamaral/gomcp-sdk/server"
@@ -68,7 +68,7 @@ func BenchmarkJSONDecoding(b *testing.B) {
 // BenchmarkToolExecution tests tool execution performance
 func BenchmarkToolExecution(b *testing.B) {
 	s := server.NewServer("bench-server", "1.0.0")
-	
+
 	tool := protocol.Tool{
 		Name:        "bench_tool",
 		Description: "Benchmark tool",
@@ -97,7 +97,7 @@ func BenchmarkToolExecution(b *testing.B) {
 		JSONRPC: "2.0",
 		ID:      json.RawMessage(`1`),
 		Method:  "tools/call",
-		Params: json.RawMessage(`{"name": "bench_tool", "arguments": {"value": "test"}}`),
+		Params:  json.RawMessage(`{"name": "bench_tool", "arguments": {"value": "test"}}`),
 	}
 
 	ctx := context.Background()
@@ -113,7 +113,7 @@ func BenchmarkToolExecution(b *testing.B) {
 // BenchmarkConcurrentRequests tests concurrent request handling
 func BenchmarkConcurrentRequests(b *testing.B) {
 	s := server.NewServer("bench-server", "1.0.0")
-	
+
 	tool := protocol.Tool{
 		Name:        "concurrent_tool",
 		Description: "Concurrent benchmark tool",
@@ -132,11 +132,11 @@ func BenchmarkConcurrentRequests(b *testing.B) {
 		JSONRPC: "2.0",
 		ID:      json.RawMessage(`1`),
 		Method:  "tools/call",
-		Params: json.RawMessage(`{"name": "concurrent_tool", "arguments": {}}`),
+		Params:  json.RawMessage(`{"name": "concurrent_tool", "arguments": {}}`),
 	}
 
 	ctx := context.Background()
-	
+
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -156,7 +156,7 @@ func BenchmarkMemoryAllocation(b *testing.B) {
 			ID:      json.RawMessage(`1`),
 			Method:  "ping",
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -172,14 +172,14 @@ func BenchmarkMemoryAllocation(b *testing.B) {
 			largeParams[string(rune('a'+i))] = "value" + string(rune('0'+i))
 		}
 		paramsJSON, _ := json.Marshal(largeParams)
-		
+
 		req := &protocol.JSONRPCRequest{
 			JSONRPC: "2.0",
 			ID:      json.RawMessage(`1`),
 			Method:  "tools/call",
 			Params:  paramsJSON,
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -213,7 +213,7 @@ func BenchmarkRequestParsing(b *testing.B) {
 // BenchmarkToolRegistry tests tool registry lookup performance
 func BenchmarkToolRegistry(b *testing.B) {
 	s := server.NewServer("bench-server", "1.0.0")
-	
+
 	// Add many tools to test lookup performance
 	for i := 0; i < 100; i++ {
 		tool := protocol.Tool{
@@ -229,7 +229,7 @@ func BenchmarkToolRegistry(b *testing.B) {
 
 	// Prepare requests for different tools
 	toolNames := []string{"tool_a0", "tool_m1", "tool_z3", "tool_d0", "tool_p2"}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		toolName := toolNames[i%len(toolNames)]
@@ -237,14 +237,14 @@ func BenchmarkToolRegistry(b *testing.B) {
 			"name":      toolName,
 			"arguments": map[string]interface{}{},
 		})
-		
+
 		req := &protocol.JSONRPCRequest{
 			JSONRPC: "2.0",
 			ID:      json.RawMessage(`1`),
 			Method:  "tools/call",
 			Params:  params,
 		}
-		
+
 		resp := s.HandleRequest(context.Background(), req)
 		if resp.Error != nil && resp.Error.Code != -32601 { // Method not found is expected
 			b.Fatal(resp.Error)

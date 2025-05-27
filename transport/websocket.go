@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"github.com/gorilla/websocket"
 )
 
 // WebSocketConfig contains configuration for WebSocket transport
@@ -58,7 +58,7 @@ type WebSocketTransport struct {
 	running  bool
 	certFile string
 	keyFile  string
-	
+
 	// Active connections
 	connections map[*websocket.Conn]bool
 	connMu      sync.RWMutex

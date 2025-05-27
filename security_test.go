@@ -76,7 +76,7 @@ func TestPathTraversalProtection(t *testing.T) {
 		t.Run(p.input, func(t *testing.T) {
 			// Clean the path
 			_ = filepath.Clean(p.input)
-			
+
 			// Check for path traversal attempts
 			// Also check for URL-encoded dots (%2e)
 			decoded := p.input
@@ -85,7 +85,7 @@ func TestPathTraversalProtection(t *testing.T) {
 				decoded = strings.ReplaceAll(decoded, "%2e", ".")
 				decoded = strings.ReplaceAll(decoded, "%2f", "/")
 			}
-			
+
 			if strings.Contains(decoded, "..") || strings.Contains(p.input, "\x00") {
 				if !p.blocked {
 					t.Errorf("path traversal not blocked: %s", p.input)
@@ -103,33 +103,33 @@ func TestPathTraversalProtection(t *testing.T) {
 func TestRateLimiting(t *testing.T) {
 	// Skip test if it takes too long
 	t.Skip("Rate limiting test disabled for CI")
-	
+
 	_ = server.NewServer("test", "1.0.0")
-	
+
 	// Configure aggressive rate limit for testing
 	rateLimiter := &mockRateLimiter{
-		limit:     5,
-		window:    time.Second,
-		requests:  make(map[string][]time.Time),
+		limit:    5,
+		window:   time.Second,
+		requests: make(map[string][]time.Time),
 	}
-	
+
 	clientID := "test-client"
-	
+
 	// Make requests up to the limit
 	for i := 0; i < 5; i++ {
 		if !rateLimiter.Allow(clientID) {
 			t.Errorf("request %d should be allowed", i)
 		}
 	}
-	
+
 	// Next request should be blocked
 	if rateLimiter.Allow(clientID) {
 		t.Error("request should be rate limited")
 	}
-	
+
 	// Wait for window to pass
 	time.Sleep(time.Second)
-	
+
 	// Should be allowed again
 	if !rateLimiter.Allow(clientID) {
 		t.Error("request should be allowed after window")
@@ -139,12 +139,12 @@ func TestRateLimiting(t *testing.T) {
 // TestSecureDefaults tests that secure defaults are properly set
 func TestSecureDefaults(t *testing.T) {
 	s := server.NewServer("test", "1.0.0")
-	
+
 	// Test that server has secure defaults
 	if s == nil {
 		t.Fatal("server should not be nil")
 	}
-	
+
 	// Additional security default tests can be added here
 }
 
@@ -158,7 +158,7 @@ type mockRateLimiter struct {
 func (r *mockRateLimiter) Allow(clientID string) bool {
 	now := time.Now()
 	cutoff := now.Add(-r.window)
-	
+
 	// Clean old requests
 	validRequests := []time.Time{}
 	for _, reqTime := range r.requests[clientID] {
@@ -166,11 +166,11 @@ func (r *mockRateLimiter) Allow(clientID string) bool {
 			validRequests = append(validRequests, reqTime)
 		}
 	}
-	
+
 	if len(validRequests) >= r.limit {
 		return false
 	}
-	
+
 	r.requests[clientID] = append(validRequests, now)
 	return true
 }

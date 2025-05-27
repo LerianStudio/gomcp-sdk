@@ -56,31 +56,31 @@ func (c *OptimizedJSONCodec) Encode(v interface{}) ([]byte, error) {
 	// Get encoder from pool
 	ew := c.encoderPool.Get().(*encoderWrapper)
 	defer c.encoderPool.Put(ew)
-	
+
 	// Reset buffer
 	ew.buf.Reset()
-	
+
 	// Create new encoder if needed
 	if ew.enc == nil {
 		ew.enc = json.NewEncoder(ew.buf)
 		ew.enc.SetEscapeHTML(false) // Avoid HTML escaping overhead
 	}
-	
+
 	// Encode value
 	if err := ew.enc.Encode(v); err != nil {
 		return nil, err
 	}
-	
+
 	// Get bytes without trailing newline
 	data := ew.buf.Bytes()
 	if len(data) > 0 && data[len(data)-1] == '\n' {
 		data = data[:len(data)-1]
 	}
-	
+
 	// Make a copy to return (buffer will be reused)
 	result := make([]byte, len(data))
 	copy(result, data)
-	
+
 	return result, nil
 }
 
@@ -89,14 +89,14 @@ func (c *OptimizedJSONCodec) EncodeToWriter(w io.Writer, v interface{}) error {
 	// Get encoder from pool
 	ew := c.encoderPool.Get().(*encoderWrapper)
 	defer c.encoderPool.Put(ew)
-	
+
 	// Reset buffer
 	ew.buf.Reset()
-	
+
 	// Create encoder for the writer directly
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
-	
+
 	return enc.Encode(v)
 }
 
@@ -105,12 +105,12 @@ func (c *OptimizedJSONCodec) Decode(data []byte, v interface{}) error {
 	// Get decoder from pool
 	dw := c.decoderPool.Get().(*decoderWrapper)
 	defer c.decoderPool.Put(dw)
-	
+
 	// Create decoder with data
 	reader := bytes.NewReader(data)
 	dw.dec = json.NewDecoder(reader)
 	dw.dec.UseNumber() // Preserve number precision
-	
+
 	return dw.dec.Decode(v)
 }
 
@@ -119,11 +119,11 @@ func (c *OptimizedJSONCodec) DecodeFromReader(r io.Reader, v interface{}) error 
 	// Get decoder from pool
 	dw := c.decoderPool.Get().(*decoderWrapper)
 	defer c.decoderPool.Put(dw)
-	
+
 	// Create decoder for reader
 	dw.dec = json.NewDecoder(r)
 	dw.dec.UseNumber()
-	
+
 	return dw.dec.Decode(v)
 }
 
@@ -146,11 +146,11 @@ func (c *OptimizedJSONCodec) marshalRequest(req *JSONRPCRequest) ([]byte, error)
 	buf := c.bufferPool.Get().(*bytes.Buffer)
 	defer c.bufferPool.Put(buf)
 	buf.Reset()
-	
+
 	buf.WriteString(`{"jsonrpc":"`)
 	buf.WriteString(req.JSONRPC)
 	buf.WriteString(`"`)
-	
+
 	if req.ID != nil {
 		buf.WriteString(`,"id":`)
 		if err := json.NewEncoder(buf).Encode(req.ID); err != nil {
@@ -161,11 +161,11 @@ func (c *OptimizedJSONCodec) marshalRequest(req *JSONRPCRequest) ([]byte, error)
 			buf.Truncate(buf.Len() - 1)
 		}
 	}
-	
+
 	buf.WriteString(`,"method":"`)
 	buf.WriteString(req.Method)
 	buf.WriteString(`"`)
-	
+
 	if req.Params != nil {
 		buf.WriteString(`,"params":`)
 		if err := json.NewEncoder(buf).Encode(req.Params); err != nil {
@@ -176,13 +176,13 @@ func (c *OptimizedJSONCodec) marshalRequest(req *JSONRPCRequest) ([]byte, error)
 			buf.Truncate(buf.Len() - 1)
 		}
 	}
-	
+
 	buf.WriteByte('}')
-	
+
 	// Make a copy to return
 	result := make([]byte, buf.Len())
 	copy(result, buf.Bytes())
-	
+
 	return result, nil
 }
 
@@ -191,11 +191,11 @@ func (c *OptimizedJSONCodec) marshalResponse(resp *JSONRPCResponse) ([]byte, err
 	buf := c.bufferPool.Get().(*bytes.Buffer)
 	defer c.bufferPool.Put(buf)
 	buf.Reset()
-	
+
 	buf.WriteString(`{"jsonrpc":"`)
 	buf.WriteString(resp.JSONRPC)
 	buf.WriteString(`"`)
-	
+
 	if resp.ID != nil {
 		buf.WriteString(`,"id":`)
 		if err := json.NewEncoder(buf).Encode(resp.ID); err != nil {
@@ -206,7 +206,7 @@ func (c *OptimizedJSONCodec) marshalResponse(resp *JSONRPCResponse) ([]byte, err
 			buf.Truncate(buf.Len() - 1)
 		}
 	}
-	
+
 	if resp.Error != nil {
 		buf.WriteString(`,"error":`)
 		if err := json.NewEncoder(buf).Encode(resp.Error); err != nil {
@@ -226,13 +226,13 @@ func (c *OptimizedJSONCodec) marshalResponse(resp *JSONRPCResponse) ([]byte, err
 			buf.Truncate(buf.Len() - 1)
 		}
 	}
-	
+
 	buf.WriteByte('}')
-	
+
 	// Make a copy to return
 	result := make([]byte, buf.Len())
 	copy(result, buf.Bytes())
-	
+
 	return result, nil
 }
 
@@ -241,13 +241,13 @@ func (c *OptimizedJSONCodec) marshalError(err *JSONRPCError) ([]byte, error) {
 	buf := c.bufferPool.Get().(*bytes.Buffer)
 	defer c.bufferPool.Put(buf)
 	buf.Reset()
-	
+
 	buf.WriteString(`{"code":`)
 	buf.WriteString(itoa(err.Code))
 	buf.WriteString(`,"message":"`)
 	buf.WriteString(escapeString(err.Message))
 	buf.WriteString(`"`)
-	
+
 	if err.Data != nil {
 		buf.WriteString(`,"data":`)
 		if err := json.NewEncoder(buf).Encode(err.Data); err != nil {
@@ -258,13 +258,13 @@ func (c *OptimizedJSONCodec) marshalError(err *JSONRPCError) ([]byte, error) {
 			buf.Truncate(buf.Len() - 1)
 		}
 	}
-	
+
 	buf.WriteByte('}')
-	
+
 	// Make a copy to return
 	result := make([]byte, buf.Len())
 	copy(result, buf.Bytes())
-	
+
 	return result, nil
 }
 
@@ -273,25 +273,25 @@ func itoa(i int) string {
 	if i == 0 {
 		return "0"
 	}
-	
+
 	var b [20]byte
 	pos := len(b)
 	neg := i < 0
 	if neg {
 		i = -i
 	}
-	
+
 	for i > 0 {
 		pos--
 		b[pos] = byte('0' + i%10)
 		i /= 10
 	}
-	
+
 	if neg {
 		pos--
 		b[pos] = '-'
 	}
-	
+
 	return string(b[pos:])
 }
 
@@ -306,15 +306,15 @@ func escapeString(s string) string {
 			break
 		}
 	}
-	
+
 	if !needsEscape {
 		return s
 	}
-	
+
 	// Slow path: build escaped string
 	var buf bytes.Buffer
 	buf.Grow(len(s) + 10)
-	
+
 	for i := 0; i < len(s); i++ {
 		c := s[i]
 		switch c {
@@ -338,7 +338,7 @@ func escapeString(s string) string {
 			}
 		}
 	}
-	
+
 	return buf.String()
 }
 

@@ -17,10 +17,10 @@ func NewHandler() *Handler {
 	h := &Handler{
 		roots: []Root{},
 	}
-	
+
 	// Add default roots
 	h.addDefaultRoots()
-	
+
 	return h
 }
 
@@ -69,7 +69,7 @@ func (h *Handler) addDefaultRoots() {
 			Description: "User home directory",
 		})
 	}
-	
+
 	// Add current working directory
 	if cwd, err := os.Getwd(); err == nil {
 		h.roots = append(h.roots, Root{
@@ -78,7 +78,7 @@ func (h *Handler) addDefaultRoots() {
 			Description: "Current working directory",
 		})
 	}
-	
+
 	// Add temp directory
 	tempDir := os.TempDir()
 	h.roots = append(h.roots, Root{

@@ -18,13 +18,13 @@ type ExtendedServer struct {
 // NewExtendedServer creates a new extended MCP server with all features
 func NewExtendedServer(name, version string) *ExtendedServer {
 	base := NewServer(name, version)
-	
+
 	// Update capabilities to include new features
 	base.capabilities.Sampling = &protocol.SamplingCapability{}
 	base.capabilities.Roots = &protocol.RootsCapability{
 		ListChanged: false,
 	}
-	
+
 	return &ExtendedServer{
 		Server:          base,
 		samplingHandler: sampling.NewHandler(),
@@ -65,7 +65,7 @@ func (s *ExtendedServer) handleSamplingCreateMessage(ctx context.Context, req *p
 			Error:   protocol.NewJSONRPCError(protocol.InvalidRequest, "Server not initialized", nil),
 		}
 	}
-	
+
 	if s.samplingHandler == nil {
 		return &protocol.JSONRPCResponse{
 			JSONRPC: "2.0",
@@ -73,7 +73,7 @@ func (s *ExtendedServer) handleSamplingCreateMessage(ctx context.Context, req *p
 			Error:   protocol.NewJSONRPCError(protocol.MethodNotFound, "Sampling not supported", nil),
 		}
 	}
-	
+
 	// Convert params to JSON for the handler
 	paramsJSON, err := json.Marshal(req.Params)
 	if err != nil {
@@ -83,7 +83,7 @@ func (s *ExtendedServer) handleSamplingCreateMessage(ctx context.Context, req *p
 			Error:   protocol.NewJSONRPCError(protocol.InvalidParams, "Invalid parameters", err.Error()),
 		}
 	}
-	
+
 	result, err := s.samplingHandler.CreateMessage(ctx, paramsJSON)
 	if err != nil {
 		return &protocol.JSONRPCResponse{
@@ -92,7 +92,7 @@ func (s *ExtendedServer) handleSamplingCreateMessage(ctx context.Context, req *p
 			Error:   protocol.NewJSONRPCError(protocol.InternalError, "Sampling failed", err.Error()),
 		}
 	}
-	
+
 	return &protocol.JSONRPCResponse{
 		JSONRPC: "2.0",
 		ID:      req.ID,
@@ -109,7 +109,7 @@ func (s *ExtendedServer) handleRootsList(ctx context.Context, req *protocol.JSON
 			Error:   protocol.NewJSONRPCError(protocol.InvalidRequest, "Server not initialized", nil),
 		}
 	}
-	
+
 	if s.rootsHandler == nil {
 		return &protocol.JSONRPCResponse{
 			JSONRPC: "2.0",
@@ -117,7 +117,7 @@ func (s *ExtendedServer) handleRootsList(ctx context.Context, req *protocol.JSON
 			Error:   protocol.NewJSONRPCError(protocol.MethodNotFound, "Roots not supported", nil),
 		}
 	}
-	
+
 	// Convert params to JSON for the handler
 	paramsJSON, err := json.Marshal(req.Params)
 	if err != nil {
@@ -127,7 +127,7 @@ func (s *ExtendedServer) handleRootsList(ctx context.Context, req *protocol.JSON
 			Error:   protocol.NewJSONRPCError(protocol.InvalidParams, "Invalid parameters", err.Error()),
 		}
 	}
-	
+
 	result, err := s.rootsHandler.ListRoots(ctx, paramsJSON)
 	if err != nil {
 		return &protocol.JSONRPCResponse{
@@ -136,7 +136,7 @@ func (s *ExtendedServer) handleRootsList(ctx context.Context, req *protocol.JSON
 			Error:   protocol.NewJSONRPCError(protocol.InternalError, "Failed to list roots", err.Error()),
 		}
 	}
-	
+
 	return &protocol.JSONRPCResponse{
 		JSONRPC: "2.0",
 		ID:      req.ID,
