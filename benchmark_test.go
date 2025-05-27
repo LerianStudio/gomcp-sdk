@@ -233,10 +233,10 @@ func BenchmarkToolRegistry(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		toolName := toolNames[i%len(toolNames)]
-		params, _ := json.Marshal(map[string]interface{}{
+		params := map[string]interface{}{
 			"name":      toolName,
 			"arguments": map[string]interface{}{},
-		})
+		}
 
 		req := &protocol.JSONRPCRequest{
 			JSONRPC: "2.0",
@@ -247,7 +247,7 @@ func BenchmarkToolRegistry(b *testing.B) {
 
 		resp := s.HandleRequest(context.Background(), req)
 		if resp.Error != nil && resp.Error.Code != -32601 { // Method not found is expected
-			b.Fatal(resp.Error)
+			b.Fatalf("Unexpected error: %v (code: %d)", resp.Error.Message, resp.Error.Code)
 		}
 	}
 }
