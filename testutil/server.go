@@ -26,7 +26,7 @@ func NewTestServer(name, version string) *TestServer {
 	client := NewTestClient()
 	
 	// Create transport with test client's IO
-	trans := transport.NewStdioTransportWithIO(client.GetInput(), client.GetOutput())
+	trans := transport.NewStdioTransportWithIO(client.GetServerInput(), client.GetServerOutput())
 	srv.SetTransport(trans)
 	
 	ctx, cancel := context.WithCancel(context.Background())
@@ -58,16 +58,25 @@ func (ts *TestServer) Start() error {
 	}()
 	
 	// Give server time to start
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 	
 	return nil
 }
 
 // Stop stops the test server
 func (ts *TestServer) Stop() error {
+	// Close the client first to unblock any blocked reads
+	if err := ts.client.Close(); err != nil {
+		return err
+	}
+	
+	// Then cancel context
 	ts.cancel()
+	
+	// Wait for goroutines to finish
 	ts.wg.Wait()
-	return ts.client.Close()
+	
+	return nil
 }
 
 // Client returns the test client

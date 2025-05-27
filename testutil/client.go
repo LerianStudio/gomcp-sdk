@@ -2,7 +2,6 @@
 package testutil
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -15,8 +14,12 @@ import (
 
 // TestClient provides a test client for MCP servers
 type TestClient struct {
-	input     *bytes.Buffer
-	output    *bytes.Buffer
+	// Pipes for bidirectional communication
+	clientReader io.ReadCloser  // Client reads from this (server writes to this)
+	clientWriter io.WriteCloser // Client writes to this (server reads from this)
+	serverReader io.ReadCloser  // Server reads from this (client writes to this)
+	serverWriter io.WriteCloser // Server writes to this (client reads from this)
+	
 	encoder   *json.Encoder
 	decoder   *json.Decoder
 	responses chan *protocol.JSONRPCResponse
@@ -28,27 +31,35 @@ type TestClient struct {
 
 // NewTestClient creates a new test client
 func NewTestClient() *TestClient {
-	input := &bytes.Buffer{}
-	output := &bytes.Buffer{}
+	// Create two pipes for bidirectional communication
+	// Pipe 1: Client writes, Server reads
+	serverFromClient, clientToServer := io.Pipe()
+	// Pipe 2: Server writes, Client reads
+	clientFromServer, serverToClient := io.Pipe()
 	
-	return &TestClient{
-		input:     input,
-		output:    output,
-		encoder:   json.NewEncoder(input),
-		decoder:   json.NewDecoder(output),
-		responses: make(chan *protocol.JSONRPCResponse, 100),
-		errors:    make(chan error, 100),
+	client := &TestClient{
+		clientReader: clientFromServer,
+		clientWriter: clientToServer,
+		serverReader: serverFromClient,
+		serverWriter: serverToClient,
+		responses:    make(chan *protocol.JSONRPCResponse, 100),
+		errors:       make(chan error, 100),
 	}
+	
+	client.encoder = json.NewEncoder(client.clientWriter)
+	client.decoder = json.NewDecoder(client.clientReader)
+	
+	return client
 }
 
-// GetInput returns the input buffer (what the server reads from)
-func (c *TestClient) GetInput() io.Reader {
-	return c.input
+// GetServerInput returns the input buffer (what the server reads from)
+func (c *TestClient) GetServerInput() io.Reader {
+	return c.serverReader
 }
 
-// GetOutput returns the output buffer (what the server writes to)
-func (c *TestClient) GetOutput() io.Writer {
-	return c.output
+// GetServerOutput returns the output buffer (what the server writes to)
+func (c *TestClient) GetServerOutput() io.Writer {
+	return c.serverWriter
 }
 
 // SendRequest sends a request to the server
@@ -67,6 +78,7 @@ func (c *TestClient) SendRequest(method string, params interface{}) (int64, erro
 		Method:  method,
 		Params:  params,
 	}
+	
 	
 	if err := c.encoder.Encode(req); err != nil {
 		return 0, fmt.Errorf("encoding request: %w", err)
@@ -106,7 +118,7 @@ func (c *TestClient) ReadResponses(ctx context.Context) {
 		default:
 			var resp protocol.JSONRPCResponse
 			if err := c.decoder.Decode(&resp); err != nil {
-				if err != io.EOF {
+				if err != io.EOF && err != io.ErrClosedPipe {
 					select {
 					case c.errors <- err:
 					case <-ctx.Done():
@@ -282,6 +294,12 @@ func (c *TestClient) Close() error {
 	c.closed = true
 	close(c.responses)
 	close(c.errors)
+	
+	// Close all pipes
+	c.clientReader.Close()
+	c.clientWriter.Close()
+	c.serverReader.Close()
+	c.serverWriter.Close()
 	
 	return nil
 }

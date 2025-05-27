@@ -58,20 +58,45 @@ func (t *StdioTransport) Start(ctx context.Context, handler RequestHandler) erro
 		t.mutex.Unlock()
 	}()
 
+	// Create channels for communication
+	type scanResult struct {
+		line string
+		err  error
+	}
+	scanChan := make(chan scanResult, 10) // Buffer to prevent blocking
+
+	// Start scanner in a goroutine
+	go func() {
+		for t.scanner.Scan() {
+			select {
+			case scanChan <- scanResult{line: t.scanner.Text()}:
+			case <-ctx.Done():
+				return
+			}
+		}
+		if err := t.scanner.Err(); err != nil {
+			scanChan <- scanResult{err: err}
+		} else {
+			// EOF
+			close(scanChan)
+		}
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		default:
-			if !t.scanner.Scan() {
-				if err := t.scanner.Err(); err != nil {
-					return fmt.Errorf("scanning input: %w", err)
-				}
-				// EOF reached
+		case result, ok := <-scanChan:
+			if !ok {
+				// Channel closed, EOF reached
 				return nil
 			}
+			
+			if result.err != nil {
+				return fmt.Errorf("scanning input: %w", result.err)
+			}
 
-			line := t.scanner.Text()
+			line := result.line
 			if line == "" {
 				continue
 			}
