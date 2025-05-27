@@ -211,22 +211,6 @@ func (t *SSETransport) handleSSE(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check max clients
-	t.clientMu.RLock()
-	clientCount := len(t.clients)
-	t.clientMu.RUnlock()
-
-	if clientCount >= t.sseConfig.MaxClients {
-		http.Error(w, "Maximum clients reached", http.StatusServiceUnavailable)
-		return
-	}
-
-	// Set SSE headers
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("X-Accel-Buffering", "no") // Disable Nginx buffering
-
 	// Create client
 	clientID := generateID()
 	client := &sseClient{
@@ -238,10 +222,21 @@ func (t *SSETransport) handleSSE(w http.ResponseWriter, r *http.Request) {
 		flusher:     flusher,
 	}
 
-	// Register client
+	// Check max clients and register atomically
 	t.clientMu.Lock()
+	if t.sseConfig.MaxClients > 0 && len(t.clients) >= t.sseConfig.MaxClients {
+		t.clientMu.Unlock()
+		http.Error(w, "Maximum clients reached", http.StatusServiceUnavailable)
+		return
+	}
 	t.clients[clientID] = client
 	t.clientMu.Unlock()
+
+	// Set SSE headers after client registration succeeds
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no") // Disable Nginx buffering
 
 	// Send initial connection event
 	t.sendToClient(client, &sseEvent{
@@ -374,13 +369,13 @@ func (t *SSETransport) broadcastHandler() {
 		}
 		t.clientMu.RUnlock()
 
-		// Send to all clients
+		// Send to all clients with a small timeout
 		for _, client := range clients {
 			select {
 			case client.events <- event:
 				// Event queued
-			default:
-				// Client buffer full, skip
+			case <-time.After(100 * time.Millisecond):
+				// Client not ready or buffer full, skip after timeout
 			}
 		}
 	}

@@ -198,9 +198,18 @@ func TestSSETransport_Broadcast(t *testing.T) {
 		<-client.events // capabilities
 	}
 
-	// Wait for all connections
-	time.Sleep(100 * time.Millisecond)
+	// Wait for all connections to be established
+	maxRetries := 10
+	for i := 0; i < maxRetries; i++ {
+		if transport.ClientCount() == numClients {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 	assert.Equal(t, numClients, transport.ClientCount())
+
+	// Give clients time to settle on Windows
+	time.Sleep(200 * time.Millisecond)
 
 	// Broadcast message
 	testData := map[string]interface{}{
