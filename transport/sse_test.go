@@ -407,11 +407,25 @@ func TestSSETransport_CommandEndpoint(t *testing.T) {
 
 		// Response should come via SSE
 		select {
-		case event := <-sseClient.events:
-			t.Logf("Received SSE event: %s", event)
+		case eventData := <-sseClient.events:
+			// Parse the SSE event
+			event, err := ParseSSEEvent(eventData)
+			require.NoError(t, err)
+			
+			// Verify event structure
+			assert.NotEmpty(t, event.Data)
+			t.Logf("Received SSE event - ID: %s, Event: %s, Data: %s", event.ID, event.Event, event.Data)
+			
+			// Parse JSON response from event data
+			var jsonResp protocol.JSONRPCResponse
+			err = json.Unmarshal([]byte(event.Data), &jsonResp)
+			require.NoError(t, err)
+			
+			// Verify response matches request
+			assert.Equal(t, req.ID, jsonResp.ID)
+			assert.Equal(t, "test response", jsonResp.Result)
 		case <-time.After(2 * time.Second):
-			// Note: Need to properly parse SSE events in real implementation
-			t.Log("SSE response parsing would happen here")
+			t.Fatal("Timeout waiting for SSE response")
 		}
 	})
 }
@@ -740,5 +754,161 @@ func BenchmarkSSETransport_DirectMessage(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		transport.SendToClient(clientID, "benchmark", message)
+	}
+}
+
+func TestSSEEventParsing(t *testing.T) {
+	tests := []struct {
+		name     string
+		raw      string
+		expected *SSEEvent
+		wantErr  bool
+	}{
+		{
+			name: "simple event",
+			raw:  "data: hello world\n\n",
+			expected: &SSEEvent{
+				Data: "hello world",
+			},
+		},
+		{
+			name: "event with type",
+			raw:  "event: message\ndata: hello world\n\n",
+			expected: &SSEEvent{
+				Event: "message",
+				Data:  "hello world",
+			},
+		},
+		{
+			name: "event with id",
+			raw:  "id: 123\nevent: message\ndata: hello world\n\n",
+			expected: &SSEEvent{
+				ID:    "123",
+				Event: "message",
+				Data:  "hello world",
+			},
+		},
+		{
+			name: "event with retry",
+			raw:  "retry: 5000\ndata: reconnect please\n\n",
+			expected: &SSEEvent{
+				Retry: 5000,
+				Data:  "reconnect please",
+			},
+		},
+		{
+			name: "multiline data",
+			raw:  "data: line 1\ndata: line 2\ndata: line 3\n\n",
+			expected: &SSEEvent{
+				Data: "line 1\nline 2\nline 3",
+			},
+		},
+		{
+			name: "JSON data",
+			raw:  "data: {\"type\":\"message\",\"content\":\"hello\"}\n\n",
+			expected: &SSEEvent{
+				Data: "{\"type\":\"message\",\"content\":\"hello\"}",
+			},
+		},
+		{
+			name:    "empty event",
+			raw:     "\n\n",
+			wantErr: true,
+		},
+		{
+			name:    "no data or event",
+			raw:     "id: 123\nretry: 5000\n\n",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			event, err := ParseSSEEvent(tt.raw)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected.ID, event.ID)
+			assert.Equal(t, tt.expected.Event, event.Event)
+			assert.Equal(t, tt.expected.Data, event.Data)
+			assert.Equal(t, tt.expected.Retry, event.Retry)
+		})
+	}
+}
+
+func TestSSETransport_EventFormatting(t *testing.T) {
+	config := &SSEConfig{
+		HTTPConfig: HTTPConfig{
+			Address: "localhost:0",
+		},
+		EventPath:  "/events",
+		MaxClients: 10,
+	}
+
+	transport := NewSSETransport(config)
+	handler := &mockHandler{}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := transport.Start(ctx, handler)
+	require.NoError(t, err)
+	defer transport.Stop()
+
+	addr := transport.Address()
+	baseURL := "http://" + addr
+
+	// Connect SSE client
+	sseClient := newSSETestClient()
+	err = sseClient.connect(baseURL + "/events")
+	require.NoError(t, err)
+
+	// Wait for connection event
+	eventData := <-sseClient.events
+	event, err := ParseSSEEvent(eventData)
+	require.NoError(t, err)
+	assert.Equal(t, "connection", event.Event)
+
+	// Parse client ID from connection data
+	var connData map[string]interface{}
+	err = json.Unmarshal([]byte(event.Data), &connData)
+	require.NoError(t, err)
+	clientID := connData["clientId"].(string)
+	assert.NotEmpty(t, clientID)
+
+	// Test different event types
+	testCases := []struct {
+		eventType string
+		data      interface{}
+	}{
+		{"message", map[string]string{"text": "Hello SSE"}},
+		{"notification", map[string]interface{}{"level": "info", "msg": "Test notification"}},
+		{"update", map[string]interface{}{"field": "value", "timestamp": time.Now().Unix()}},
+		{"json-rpc", &protocol.JSONRPCResponse{JSONRPC: "2.0", ID: 1, Result: "test"}},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.eventType, func(t *testing.T) {
+			err := transport.SendToClient(clientID, tc.eventType, tc.data)
+			require.NoError(t, err)
+
+			select {
+			case eventData := <-sseClient.events:
+				event, err := ParseSSEEvent(eventData)
+				require.NoError(t, err)
+				assert.Equal(t, tc.eventType, event.Event)
+				assert.NotEmpty(t, event.ID)
+				assert.NotEmpty(t, event.Data)
+
+				// Verify data can be parsed as JSON
+				var parsed interface{}
+				err = json.Unmarshal([]byte(event.Data), &parsed)
+				assert.NoError(t, err)
+			case <-time.After(1 * time.Second):
+				t.Fatal("Timeout waiting for event")
+			}
+		})
 	}
 }

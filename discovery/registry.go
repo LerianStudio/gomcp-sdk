@@ -38,6 +38,7 @@ func (r *Registry) RegisterTool(tool protocol.Tool, handler protocol.ToolHandler
 
 	info := &ToolInfo{
 		Tool:      tool,
+		Handler:   handler,
 		Available: true,
 		LastSeen:  time.Now(),
 		Source:    source,
@@ -359,4 +360,21 @@ func (r *Registry) UpdateAvailability(category, name string, available bool) err
 	default:
 		return fmt.Errorf("unknown category: %s", category)
 	}
+}
+
+// GetToolHandler retrieves a tool handler by name
+func (r *Registry) GetToolHandler(name string) (protocol.ToolHandler, error) {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	info, exists := r.tools[name]
+	if !exists {
+		return nil, fmt.Errorf("tool %s not found", name)
+	}
+
+	if info.Handler == nil {
+		return nil, fmt.Errorf("tool %s has no handler", name)
+	}
+
+	return info.Handler, nil
 }

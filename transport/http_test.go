@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -416,33 +418,337 @@ func TestHTTPTransport_RecoveryMiddleware(t *testing.T) {
 }
 
 func TestHTTPSTransport(t *testing.T) {
-	// Note: This is a basic test. In production, you'd use proper certificates
+	// Generate test certificates
+	certs, err := GenerateTestCertificates([]string{"localhost", "127.0.0.1"})
+	require.NoError(t, err)
+
+	// Write certificates to temporary files
+	tempDir := t.TempDir()
+	_, _, serverCertFile, serverKeyFile, _, _, err := certs.WriteCertificatesToFiles(tempDir)
+	require.NoError(t, err)
+
+	// Create TLS config with test CA
+	tlsConfig, err := CreateTLSConfig(certs.CAPEMCert, certs.ServerPEMCert, certs.ServerPEMKey, tls.NoClientCert)
+	require.NoError(t, err)
+
 	config := &HTTPConfig{
-		Address: "localhost:0",
-		TLSConfig: &tls.Config{
-			InsecureSkipVerify: true, // Only for testing
-		},
+		Address:   "localhost:0",
+		TLSConfig: tlsConfig,
 	}
 
-	// Create temporary self-signed certificate for testing
-	certFile := t.TempDir() + "/cert.pem"
-	keyFile := t.TempDir() + "/key.pem"
-
-	// In a real test, generate test certificates here
-	// For now, we'll skip the HTTPS test
-	t.Skip("Skipping HTTPS test - requires certificate generation")
-
-	transport := NewHTTPSTransport(config, certFile, keyFile)
+	transport := NewHTTPSTransport(config, serverCertFile, serverKeyFile)
 	handler := &mockHandler{}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := transport.Start(ctx, handler)
+	err = transport.Start(ctx, handler)
 	require.NoError(t, err)
 	defer transport.Stop()
 
-	// Test would continue with HTTPS client...
+	addr := transport.Address()
+
+	// Create HTTPS client with CA cert
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(certs.CAPEMCert)
+	
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: caCertPool,
+			},
+		},
+		Timeout: 5 * time.Second,
+	}
+
+	// Test basic HTTPS request
+	req := &protocol.JSONRPCRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "test",
+	}
+
+	reqBody, _ := json.Marshal(req)
+	resp, err := client.Post("https://"+addr+"/", "application/json", bytes.NewReader(reqBody))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	var jsonResp protocol.JSONRPCResponse
+	err = json.NewDecoder(resp.Body).Decode(&jsonResp)
+	require.NoError(t, err)
+	assert.Equal(t, req.ID, jsonResp.ID)
+	assert.Equal(t, "test response", jsonResp.Result)
+}
+
+func TestHTTPSTransport_CertificateScenarios(t *testing.T) {
+	tests := []struct {
+		name          string
+		setupCert     func(*TestCertificates, string) (string, string, error)
+		clientConfig  func(*TestCertificates) *tls.Config
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "valid certificate",
+			setupCert: func(certs *TestCertificates, dir string) (string, string, error) {
+				_, _, serverCertFile, serverKeyFile, _, _, err := certs.WriteCertificatesToFiles(dir)
+				return serverCertFile, serverKeyFile, err
+			},
+			clientConfig: func(certs *TestCertificates) *tls.Config {
+				caCertPool := x509.NewCertPool()
+				caCertPool.AppendCertsFromPEM(certs.CAPEMCert)
+				return &tls.Config{RootCAs: caCertPool}
+			},
+			expectError: false,
+		},
+		{
+			name: "expired certificate",
+			setupCert: func(certs *TestCertificates, dir string) (string, string, error) {
+				expiredCert, expiredKey, err := GenerateExpiredCertificate(certs.CACert, certs.CAKey, []string{"localhost", "127.0.0.1"})
+				if err != nil {
+					return "", "", err
+				}
+				certFile := dir + "/expired-cert.pem"
+				keyFile := dir + "/expired-key.pem"
+				if err := os.WriteFile(certFile, expiredCert, 0644); err != nil {
+					return "", "", err
+				}
+				if err := os.WriteFile(keyFile, expiredKey, 0600); err != nil {
+					return "", "", err
+				}
+				return certFile, keyFile, nil
+			},
+			clientConfig: func(certs *TestCertificates) *tls.Config {
+				caCertPool := x509.NewCertPool()
+				caCertPool.AppendCertsFromPEM(certs.CAPEMCert)
+				return &tls.Config{RootCAs: caCertPool}
+			},
+			expectError:   true,
+			errorContains: "certificate has expired",
+		},
+		{
+			name: "wrong hostname",
+			setupCert: func(certs *TestCertificates, dir string) (string, string, error) {
+				wrongCert, wrongKey, err := GenerateWrongHostnameCertificate(certs.CACert, certs.CAKey)
+				if err != nil {
+					return "", "", err
+				}
+				certFile := dir + "/wrong-cert.pem"
+				keyFile := dir + "/wrong-key.pem"
+				if err := os.WriteFile(certFile, wrongCert, 0644); err != nil {
+					return "", "", err
+				}
+				if err := os.WriteFile(keyFile, wrongKey, 0600); err != nil {
+					return "", "", err
+				}
+				return certFile, keyFile, nil
+			},
+			clientConfig: func(certs *TestCertificates) *tls.Config {
+				caCertPool := x509.NewCertPool()
+				caCertPool.AppendCertsFromPEM(certs.CAPEMCert)
+				return &tls.Config{RootCAs: caCertPool}
+			},
+			expectError:   true,
+			errorContains: "certificate is valid for wrong.example.com",
+		},
+		{
+			name: "untrusted certificate",
+			setupCert: func(certs *TestCertificates, dir string) (string, string, error) {
+				// Create a new self-signed certificate not signed by our CA
+				untrustedCerts, err := GenerateTestCertificates([]string{"localhost", "127.0.0.1"})
+				if err != nil {
+					return "", "", err
+				}
+				certFile := dir + "/untrusted-cert.pem"
+				keyFile := dir + "/untrusted-key.pem"
+				if err := os.WriteFile(certFile, untrustedCerts.ServerPEMCert, 0644); err != nil {
+					return "", "", err
+				}
+				if err := os.WriteFile(keyFile, untrustedCerts.ServerPEMKey, 0600); err != nil {
+					return "", "", err
+				}
+				return certFile, keyFile, nil
+			},
+			clientConfig: func(certs *TestCertificates) *tls.Config {
+				caCertPool := x509.NewCertPool()
+				caCertPool.AppendCertsFromPEM(certs.CAPEMCert)
+				return &tls.Config{RootCAs: caCertPool}
+			},
+			expectError:   true,
+			errorContains: "certificate signed by unknown authority",
+		},
+		{
+			name: "skip verify",
+			setupCert: func(certs *TestCertificates, dir string) (string, string, error) {
+				// Use any certificate - client will skip verification
+				_, _, serverCertFile, serverKeyFile, _, _, err := certs.WriteCertificatesToFiles(dir)
+				return serverCertFile, serverKeyFile, err
+			},
+			clientConfig: func(certs *TestCertificates) *tls.Config {
+				return &tls.Config{InsecureSkipVerify: true}
+			},
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Generate base test certificates
+			certs, err := GenerateTestCertificates([]string{"localhost", "127.0.0.1"})
+			require.NoError(t, err)
+
+			// Setup specific certificate for this test
+			tempDir := t.TempDir()
+			certFile, keyFile, err := tt.setupCert(certs, tempDir)
+			require.NoError(t, err)
+
+			// Create server with certificate
+			config := &HTTPConfig{
+				Address: "localhost:0",
+			}
+
+			transport := NewHTTPSTransport(config, certFile, keyFile)
+			handler := &mockHandler{}
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			err = transport.Start(ctx, handler)
+			require.NoError(t, err)
+			defer transport.Stop()
+
+			addr := transport.Address()
+
+			// Create client with specific TLS config
+			client := &http.Client{
+				Transport: &http.Transport{
+					TLSClientConfig: tt.clientConfig(certs),
+				},
+				Timeout: 5 * time.Second,
+			}
+
+			// Make request
+			req := &protocol.JSONRPCRequest{
+				JSONRPC: "2.0",
+				ID:      1,
+				Method:  "test",
+			}
+
+			reqBody, _ := json.Marshal(req)
+			resp, err := client.Post("https://"+addr+"/", "application/json", bytes.NewReader(reqBody))
+
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains)
+				}
+			} else {
+				require.NoError(t, err)
+				defer resp.Body.Close()
+
+				var jsonResp protocol.JSONRPCResponse
+				err = json.NewDecoder(resp.Body).Decode(&jsonResp)
+				require.NoError(t, err)
+				assert.Equal(t, req.ID, jsonResp.ID)
+			}
+		})
+	}
+}
+
+func TestHTTPSTransport_MutualTLS(t *testing.T) {
+	// Generate test certificates
+	certs, err := GenerateTestCertificates([]string{"localhost", "127.0.0.1"})
+	require.NoError(t, err)
+
+	// Write certificates to temporary files
+	tempDir := t.TempDir()
+	_, _, serverCertFile, serverKeyFile, clientCertFile, clientKeyFile, err := certs.WriteCertificatesToFiles(tempDir)
+	require.NoError(t, err)
+
+	// Create server TLS config requiring client certificates
+	serverTLSConfig, err := CreateTLSConfig(certs.CAPEMCert, certs.ServerPEMCert, certs.ServerPEMKey, tls.RequireAndVerifyClientCert)
+	require.NoError(t, err)
+
+	config := &HTTPConfig{
+		Address:   "localhost:0",
+		TLSConfig: serverTLSConfig,
+	}
+
+	transport := NewHTTPSTransport(config, serverCertFile, serverKeyFile)
+	handler := &mockHandler{}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err = transport.Start(ctx, handler)
+	require.NoError(t, err)
+	defer transport.Stop()
+
+	addr := transport.Address()
+
+	t.Run("with client certificate", func(t *testing.T) {
+		// Load client certificate
+		clientCert, err := tls.LoadX509KeyPair(clientCertFile, clientKeyFile)
+		require.NoError(t, err)
+
+		// Create client with client certificate
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(certs.CAPEMCert)
+
+		client := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					RootCAs:      caCertPool,
+					Certificates: []tls.Certificate{clientCert},
+				},
+			},
+			Timeout: 5 * time.Second,
+		}
+
+		// Make request
+		req := &protocol.JSONRPCRequest{
+			JSONRPC: "2.0",
+			ID:      1,
+			Method:  "test",
+		}
+
+		reqBody, _ := json.Marshal(req)
+		resp, err := client.Post("https://"+addr+"/", "application/json", bytes.NewReader(reqBody))
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		var jsonResp protocol.JSONRPCResponse
+		err = json.NewDecoder(resp.Body).Decode(&jsonResp)
+		require.NoError(t, err)
+		assert.Equal(t, req.ID, jsonResp.ID)
+	})
+
+	t.Run("without client certificate", func(t *testing.T) {
+		// Create client without client certificate
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(certs.CAPEMCert)
+
+		client := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					RootCAs: caCertPool,
+				},
+			},
+			Timeout: 5 * time.Second,
+		}
+
+		// Make request - should fail
+		req := &protocol.JSONRPCRequest{
+			JSONRPC: "2.0",
+			ID:      1,
+			Method:  "test",
+		}
+
+		reqBody, _ := json.Marshal(req)
+		_, err := client.Post("https://"+addr+"/", "application/json", bytes.NewReader(reqBody))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "certificate required")
+	})
 }
 
 // Benchmark tests

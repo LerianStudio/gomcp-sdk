@@ -26,14 +26,15 @@ type PluginManifest struct {
 
 // PluginWatcher watches a directory for MCP plugin manifests
 type PluginWatcher struct {
-	path         string
-	scanInterval time.Duration
-	registry     *Registry
-	plugins      map[string]*PluginManifest
-	mutex        sync.RWMutex
-	ctx          context.Context
-	cancel       context.CancelFunc
-	wg           sync.WaitGroup
+	path          string
+	scanInterval  time.Duration
+	registry      *Registry
+	handlerLoader *HandlerLoader
+	plugins       map[string]*PluginManifest
+	mutex         sync.RWMutex
+	ctx           context.Context
+	cancel        context.CancelFunc
+	wg            sync.WaitGroup
 }
 
 // NewPluginWatcher creates a new plugin watcher
@@ -44,10 +45,11 @@ func NewPluginWatcher(path string, scanInterval time.Duration, registry *Registr
 	}
 
 	return &PluginWatcher{
-		path:         path,
-		scanInterval: scanInterval,
-		registry:     registry,
-		plugins:      make(map[string]*PluginManifest),
+		path:          path,
+		scanInterval:  scanInterval,
+		registry:      registry,
+		handlerLoader: NewHandlerLoader(),
+		plugins:       make(map[string]*PluginManifest),
 	}, nil
 }
 
@@ -73,6 +75,19 @@ func (w *PluginWatcher) Stop() error {
 		w.cancel()
 	}
 	w.wg.Wait()
+	
+	// Unload all handlers
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+	
+	for _, manifest := range w.plugins {
+		for _, tool := range manifest.Tools {
+			if err := w.handlerLoader.UnloadHandler(tool.Name); err != nil {
+				fmt.Printf("Failed to unload handler %s: %v\n", tool.Name, err)
+			}
+		}
+	}
+	
 	return nil
 }
 
@@ -200,10 +215,21 @@ func (w *PluginWatcher) registerPlugin(pluginID string, manifest *PluginManifest
 
 	// Register tools
 	for _, tool := range manifest.Tools {
-		// Note: In a real implementation, you'd need to load the actual tool handler
-		// This would typically involve loading a shared library or connecting to a subprocess
-		if err := w.registry.RegisterTool(tool, nil, source, manifest.Tags); err != nil {
-			return fmt.Errorf("failed to register tool %s: %w", tool.Name, err)
+		// Load the tool handler
+		manifestPath := filepath.Join(w.path, pluginID, "mcp-manifest.json")
+		if err := w.handlerLoader.LoadHandlerFromManifest(manifestPath, tool, source); err != nil {
+			// Log error but continue with other tools
+			fmt.Printf("Failed to load handler for tool %s: %v\n", tool.Name, err)
+			// Register without handler for discovery purposes
+			if err := w.registry.RegisterTool(tool, nil, source, manifest.Tags); err != nil {
+				return fmt.Errorf("failed to register tool %s: %w", tool.Name, err)
+			}
+		} else {
+			// Get the loaded handler and register with it
+			handler, _ := w.handlerLoader.GetHandler(tool.Name)
+			if err := w.registry.RegisterTool(tool, handler, source, manifest.Tags); err != nil {
+				return fmt.Errorf("failed to register tool %s: %w", tool.Name, err)
+			}
 		}
 	}
 
@@ -239,6 +265,8 @@ func (w *PluginWatcher) unregisterPlugin(pluginID string) error {
 	if manifest, exists := w.plugins[pluginID]; exists {
 		// Unregister tools
 		for _, tool := range manifest.Tools {
+			// Unload handler first
+			w.handlerLoader.UnloadHandler(tool.Name)
 			w.registry.UnregisterTool(tool.Name)
 		}
 

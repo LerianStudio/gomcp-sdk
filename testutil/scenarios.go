@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/fredcamaral/gomcp-sdk/protocol"
 	"testing"
@@ -333,7 +334,31 @@ var CommonScenarios = struct {
 						a.AssertNoError(err)
 						a.AssertJSONRPCSuccess(resp)
 
-						// TODO: Add resource list parsing and verification
+						// Parse and verify resource list response
+						resources, err := parseResourceList(resp)
+						a.AssertNoError(err)
+						a.AssertNotNil(resources)
+						a.AssertTrue(len(resources) > 0, "Expected at least one resource")
+
+						// Verify resource structure
+						for _, resource := range resources {
+							a.AssertTrue(resource.URI != "", "Resource URI should not be empty")
+							a.AssertTrue(resource.Name != "", "Resource name should not be empty")
+							a.AssertTrue(resource.MimeType != "", "Resource MIME type should not be empty")
+						}
+
+						// Verify test resource is present
+						found := false
+						for _, resource := range resources {
+							if resource.URI == "file:///test.txt" {
+								found = true
+								a.AssertEqual("test.txt", resource.Name)
+								a.AssertEqual("text/plain", resource.MimeType)
+								break
+							}
+						}
+						a.AssertTrue(found, "Expected test resource not found")
+
 						return nil
 					},
 				},
@@ -350,7 +375,24 @@ var CommonScenarios = struct {
 						a.AssertNoError(err)
 						a.AssertJSONRPCSuccess(resp)
 
-						// TODO: Add content verification
+						// Parse and verify resource content
+						contents, err := parseResourceContent(resp)
+						a.AssertNoError(err)
+						a.AssertNotNil(contents)
+						a.AssertTrue(len(contents) > 0, "Expected at least one content item")
+
+						// Verify content structure
+						for _, content := range contents {
+							a.AssertTrue(content.Type != "", "Content type should not be empty")
+							if content.Type == "text" {
+								a.AssertTrue(content.Text != "", "Text content should not be empty")
+							}
+						}
+
+						// Verify expected content
+						a.AssertEqual("text", contents[0].Type)
+						a.AssertEqual("Test resource content", contents[0].Text)
+
 						return nil
 					},
 				},
@@ -475,4 +517,64 @@ var CommonScenarios = struct {
 			},
 		}
 	},
+}
+
+// parseResourceList parses the JSON-RPC response for resources/list
+func parseResourceList(resp *protocol.JSONRPCResponse) ([]protocol.Resource, error) {
+	if resp.Error != nil {
+		return nil, fmt.Errorf("response contains error: %v", resp.Error)
+	}
+
+	result, ok := resp.Result.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid result type: expected map[string]interface{}, got %T", resp.Result)
+	}
+
+	resourcesRaw, ok := result["resources"]
+	if !ok {
+		return nil, fmt.Errorf("missing 'resources' field in response")
+	}
+
+	// Convert to JSON and parse into Resource structs
+	resourcesJSON, err := json.Marshal(resourcesRaw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal resources: %w", err)
+	}
+
+	var resources []protocol.Resource
+	if err := json.Unmarshal(resourcesJSON, &resources); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal resources: %w", err)
+	}
+
+	return resources, nil
+}
+
+// parseResourceContent parses the JSON-RPC response for resources/read
+func parseResourceContent(resp *protocol.JSONRPCResponse) ([]protocol.Content, error) {
+	if resp.Error != nil {
+		return nil, fmt.Errorf("response contains error: %v", resp.Error)
+	}
+
+	result, ok := resp.Result.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid result type: expected map[string]interface{}, got %T", resp.Result)
+	}
+
+	contentsRaw, ok := result["contents"]
+	if !ok {
+		return nil, fmt.Errorf("missing 'contents' field in response")
+	}
+
+	// Convert to JSON and parse into Content structs
+	contentsJSON, err := json.Marshal(contentsRaw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal contents: %w", err)
+	}
+
+	var contents []protocol.Content
+	if err := json.Unmarshal(contentsJSON, &contents); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal contents: %w", err)
+	}
+
+	return contents, nil
 }

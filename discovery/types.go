@@ -7,13 +7,14 @@ import (
 
 // ToolInfo provides discoverable information about a tool
 type ToolInfo struct {
-	Tool         protocol.Tool `json:"tool"`
-	Available    bool          `json:"available"`
-	LastSeen     time.Time     `json:"lastSeen"`
-	Source       string        `json:"source"`
-	Tags         []string      `json:"tags,omitempty"`
-	Requirements []string      `json:"requirements,omitempty"`
-	Examples     []ToolExample `json:"examples,omitempty"`
+	Tool         protocol.Tool        `json:"tool"`
+	Handler      protocol.ToolHandler `json:"-"` // Handler is not serialized
+	Available    bool                 `json:"available"`
+	LastSeen     time.Time            `json:"lastSeen"`
+	Source       string               `json:"source"`
+	Tags         []string             `json:"tags,omitempty"`
+	Requirements []string             `json:"requirements,omitempty"`
+	Examples     []ToolExample        `json:"examples,omitempty"`
 }
 
 // ToolExample provides an example of tool usage
