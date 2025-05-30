@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/fredcamaral/gomcp-sdk/protocol"
 )
 
 // Manager manages subscriptions for MCP
@@ -257,7 +258,7 @@ func (m *Manager) matchesSubscription(sub *Subscription, event Event) bool {
 	switch sub.Method {
 	case "resources/subscribe":
 		var params ResourceSubscriptionParams
-		if err := json.Unmarshal(sub.Params, &params); err != nil {
+		if err := protocol.FlexibleParseParams(sub.Params, &params); err != nil {
 			return false
 		}
 

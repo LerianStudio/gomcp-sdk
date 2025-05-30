@@ -101,25 +101,35 @@ func (t *StdioTransport) Start(ctx context.Context, handler RequestHandler) erro
 				continue
 			}
 
-			var req protocol.JSONRPCRequest
-			if err := json.Unmarshal([]byte(line), &req); err != nil {
-				// Send error response
-				errResp := &protocol.JSONRPCResponse{
-					JSONRPC: "2.0",
-					Error:   protocol.NewJSONRPCError(protocol.ParseError, "Parse error", err.Error()),
-				}
-				if err := t.sendResponse(errResp); err != nil {
-					return fmt.Errorf("failed to send error response: %w", err)
+			// Parse message flexibly to handle both requests and error responses
+			parsed, parseErr := protocol.ParseJSONRPCMessage([]byte(line))
+			if parseErr != nil {
+				// Send error response for parse failures
+				if jsonRPCErr, ok := parseErr.(*protocol.JSONRPCError); ok {
+					errResp := &protocol.JSONRPCResponse{
+						JSONRPC: "2.0",
+						Error:   jsonRPCErr,
+					}
+					if err := t.sendResponse(errResp); err != nil {
+						return fmt.Errorf("failed to send error response: %w", err)
+					}
 				}
 				continue
 			}
 
-			// Handle the request
-			resp := handler.HandleRequest(ctx, &req)
-			if resp != nil {
-				if err := t.sendResponse(resp); err != nil {
-					return fmt.Errorf("sending response: %w", err)
+			// Handle requests normally
+			if parsed.Request != nil {
+				resp := handler.HandleRequest(ctx, parsed.Request)
+				if resp != nil {
+					if err := t.sendResponse(resp); err != nil {
+						return fmt.Errorf("sending response: %w", err)
+					}
 				}
+			} else if parsed.Response != nil && parsed.IsError {
+				// Claude Desktop sent an error response - log it for debugging but don't crash
+				// This might be a protocol negotiation error or a client-side error
+				// In a real implementation, you might want to handle this differently
+				continue
 			}
 		}
 	}

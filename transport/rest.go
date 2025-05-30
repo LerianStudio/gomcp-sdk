@@ -189,11 +189,11 @@ func (t *RESTTransport) handleToolCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse arguments
+	// Parse arguments with flexible handling
 	var args map[string]interface{}
 	if len(body) > 0 {
-		if err := json.Unmarshal(body, &args); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		if err := protocol.FlexibleUnmarshal(body, &args); err != nil {
+			http.Error(w, fmt.Sprintf("Invalid JSON arguments: %v", err), http.StatusBadRequest)
 			return
 		}
 	}
@@ -298,8 +298,8 @@ func (t *RESTTransport) handlePromptCall(w http.ResponseWriter, r *http.Request)
 	// Parse arguments
 	var args map[string]interface{}
 	if len(body) > 0 {
-		if err := json.Unmarshal(body, &args); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		if err := protocol.FlexibleUnmarshal(body, &args); err != nil {
+			http.Error(w, fmt.Sprintf("Invalid JSON arguments: %v", err), http.StatusBadRequest)
 			return
 		}
 	}

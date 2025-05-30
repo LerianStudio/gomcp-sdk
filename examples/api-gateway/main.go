@@ -238,7 +238,7 @@ func (s *APIGatewayServer) handleAPICall(ctx context.Context, apiName string, ap
 
 	// Parse response
 	var result interface{}
-	if err := json.Unmarshal(responseBody, &result); err != nil {
+	if err := protocol.FlexibleUnmarshal(responseBody, &result); err != nil {
 		// If JSON parsing fails, return as string
 		result = string(responseBody)
 	}

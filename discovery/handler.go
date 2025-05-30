@@ -344,7 +344,7 @@ func (l *HandlerLoader) LoadHandlerFromManifest(manifestPath string, tool protoc
 	}
 
 	var config HandlerConfig
-	if err := json.Unmarshal(data, &config); err != nil {
+	if err := protocol.FlexibleUnmarshal(data, &config); err != nil {
 		return fmt.Errorf("failed to parse handler config: %w", err)
 	}
 

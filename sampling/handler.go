@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/fredcamaral/gomcp-sdk/protocol"
 	"github.com/fredcamaral/gomcp-sdk/sampling/providers"
 )
 
@@ -49,7 +50,7 @@ func NewHandlerWithConfig(config *Config) *Handler {
 // CreateMessage handles the sampling/createMessage request
 func (h *Handler) CreateMessage(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	var req CreateMessageRequest
-	if err := json.Unmarshal(params, &req); err != nil {
+	if err := protocol.FlexibleParseParams(params, &req); err != nil {
 		return nil, fmt.Errorf("invalid request parameters: %w", err)
 	}
 

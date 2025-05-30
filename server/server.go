@@ -402,19 +402,10 @@ func (s *Server) handlePromptsGet(ctx context.Context, req *protocol.JSONRPCRequ
 	}
 }
 
-// parseParams is a helper function to parse JSON-RPC parameters
+// parseParams is a helper function to parse JSON-RPC parameters with flexible handling
+// This replaces the previous rigid marshal-unmarshal pattern that caused compatibility issues
 func parseParams(params interface{}, target interface{}) error {
-	if params == nil {
-		return nil
-	}
-
-	// Convert to JSON and back to ensure proper type conversion
-	jsonBytes, err := json.Marshal(params)
-	if err != nil {
-		return err
-	}
-
-	return json.Unmarshal(jsonBytes, target)
+	return protocol.FlexibleParseParams(params, target)
 }
 
 // IsInitialized returns whether the server has been initialized

@@ -183,16 +183,24 @@ func (t *HTTPTransport) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse JSON-RPC request
-	var req protocol.JSONRPCRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		t.writeError(w, protocol.ParseError, "Invalid JSON", nil)
+	// Parse message flexibly to handle both requests and error responses
+	parsed, parseErr := protocol.ParseJSONRPCMessage(body)
+	if parseErr != nil {
+		if jsonRPCErr, ok := parseErr.(*protocol.JSONRPCError); ok {
+			t.writeError(w, jsonRPCErr.Code, jsonRPCErr.Message, jsonRPCErr.Data)
+		}
+		return
+	}
+
+	// Only handle requests in HTTP transport
+	if parsed.Request == nil {
+		t.writeError(w, protocol.InvalidRequest, "Expected JSON-RPC request", nil)
 		return
 	}
 
 	// Handle request
 	ctx := r.Context()
-	resp := t.handler.HandleRequest(ctx, &req)
+	resp := t.handler.HandleRequest(ctx, parsed.Request)
 
 	// Write response
 	t.writeResponse(w, resp)

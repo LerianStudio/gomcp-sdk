@@ -2,7 +2,6 @@ package testutil
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/fredcamaral/gomcp-sdk/protocol"
 	"testing"
@@ -535,15 +534,10 @@ func parseResourceList(resp *protocol.JSONRPCResponse) ([]protocol.Resource, err
 		return nil, fmt.Errorf("missing 'resources' field in response")
 	}
 
-	// Convert to JSON and parse into Resource structs
-	resourcesJSON, err := json.Marshal(resourcesRaw)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal resources: %w", err)
-	}
-
+	// Parse into Resource structs using flexible parsing
 	var resources []protocol.Resource
-	if err := json.Unmarshal(resourcesJSON, &resources); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal resources: %w", err)
+	if err := protocol.FlexibleParseParams(resourcesRaw, &resources); err != nil {
+		return nil, fmt.Errorf("failed to parse resources: %w", err)
 	}
 
 	return resources, nil
@@ -565,15 +559,10 @@ func parseResourceContent(resp *protocol.JSONRPCResponse) ([]protocol.Content, e
 		return nil, fmt.Errorf("missing 'contents' field in response")
 	}
 
-	// Convert to JSON and parse into Content structs
-	contentsJSON, err := json.Marshal(contentsRaw)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal contents: %w", err)
-	}
-
+	// Parse into Content structs using flexible parsing
 	var contents []protocol.Content
-	if err := json.Unmarshal(contentsJSON, &contents); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal contents: %w", err)
+	if err := protocol.FlexibleParseParams(contentsRaw, &contents); err != nil {
+		return nil, fmt.Errorf("failed to parse contents: %w", err)
 	}
 
 	return contents, nil

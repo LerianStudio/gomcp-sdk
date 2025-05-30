@@ -437,7 +437,7 @@ func (s *DatabaseServer) rollbackTransaction(txID string) error {
 // parseSchema converts a JSON string to map[string]interface{}
 func parseSchema(jsonStr string) map[string]interface{} {
 	var schema map[string]interface{}
-	if err := json.Unmarshal([]byte(jsonStr), &schema); err != nil {
+	if err := protocol.FlexibleUnmarshal([]byte(jsonStr), &schema); err != nil {
 		panic(fmt.Sprintf("invalid schema: %v", err))
 	}
 	return schema

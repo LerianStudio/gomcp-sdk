@@ -234,15 +234,10 @@ func (c *TestClient) Initialize(ctx context.Context, clientName, clientVersion s
 		return nil, fmt.Errorf("initialize error: %s", resp.Error.Message)
 	}
 
-	// Parse result
-	resultBytes, err := json.Marshal(resp.Result)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling result: %w", err)
-	}
-
+	// Parse result using flexible parsing
 	var result protocol.InitializeResult
-	if err := json.Unmarshal(resultBytes, &result); err != nil {
-		return nil, fmt.Errorf("unmarshaling result: %w", err)
+	if err := protocol.FlexibleParseParams(resp.Result, &result); err != nil {
+		return nil, fmt.Errorf("parsing result: %w", err)
 	}
 
 	return &result, nil
@@ -264,17 +259,12 @@ func (c *TestClient) ListTools(ctx context.Context) ([]protocol.Tool, error) {
 		return nil, fmt.Errorf("tools/list error: %s", resp.Error.Message)
 	}
 
-	// Parse result
-	resultBytes, err := json.Marshal(resp.Result)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling result: %w", err)
-	}
-
+	// Parse result using flexible parsing
 	var result struct {
 		Tools []protocol.Tool `json:"tools"`
 	}
-	if err := json.Unmarshal(resultBytes, &result); err != nil {
-		return nil, fmt.Errorf("unmarshaling result: %w", err)
+	if err := protocol.FlexibleParseParams(resp.Result, &result); err != nil {
+		return nil, fmt.Errorf("parsing result: %w", err)
 	}
 
 	return result.Tools, nil
@@ -301,15 +291,10 @@ func (c *TestClient) CallTool(ctx context.Context, name string, args map[string]
 		return nil, fmt.Errorf("tools/call error: %s", resp.Error.Message)
 	}
 
-	// Parse result
-	resultBytes, err := json.Marshal(resp.Result)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling result: %w", err)
-	}
-
+	// Parse result using flexible parsing
 	var result protocol.ToolCallResult
-	if err := json.Unmarshal(resultBytes, &result); err != nil {
-		return nil, fmt.Errorf("unmarshaling result: %w", err)
+	if err := protocol.FlexibleParseParams(resp.Result, &result); err != nil {
+		return nil, fmt.Errorf("parsing result: %w", err)
 	}
 
 	return &result, nil

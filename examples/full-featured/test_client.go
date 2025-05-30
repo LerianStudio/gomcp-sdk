@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/fredcamaral/gomcp-sdk/protocol"
 )
 
 // TestClient tests all MCP features
@@ -128,7 +130,7 @@ func (c *TestClient) testInitialize() {
 	}
 
 	var initResult map[string]interface{}
-	if err := json.Unmarshal(result, &initResult); err != nil {
+	if err := protocol.FlexibleUnmarshal(result, &initResult); err != nil {
 		fmt.Printf("❌ Failed to parse initialize result: %v\n", err)
 		return
 	}
@@ -148,7 +150,7 @@ func (c *TestClient) testTools() {
 	}
 
 	var tools map[string]interface{}
-	if err := json.Unmarshal(result, &tools); err != nil {
+	if err := protocol.FlexibleUnmarshal(result, &tools); err != nil {
 		fmt.Printf("❌ Failed to parse tools list: %v\n", err)
 		return
 	}
@@ -182,7 +184,7 @@ func (c *TestClient) testResources() {
 	}
 
 	var resources map[string]interface{}
-	if err := json.Unmarshal(result, &resources); err != nil {
+	if err := protocol.FlexibleUnmarshal(result, &resources); err != nil {
 		fmt.Printf("❌ Failed to parse resources list: %v\n", err)
 		return
 	}
@@ -213,7 +215,7 @@ func (c *TestClient) testPrompts() {
 	}
 
 	var prompts map[string]interface{}
-	if err := json.Unmarshal(result, &prompts); err != nil {
+	if err := protocol.FlexibleUnmarshal(result, &prompts); err != nil {
 		fmt.Printf("❌ Failed to parse prompts list: %v\n", err)
 		return
 	}
@@ -252,7 +254,7 @@ func (c *TestClient) testRoots() {
 	}
 
 	var roots map[string]interface{}
-	if err := json.Unmarshal(result, &roots); err != nil {
+	if err := protocol.FlexibleUnmarshal(result, &roots); err != nil {
 		fmt.Printf("❌ Failed to parse roots list: %v\n", err)
 		return
 	}
@@ -309,7 +311,7 @@ func (c *TestClient) testDiscovery() {
 	}
 
 	var discovery map[string]interface{}
-	if err := json.Unmarshal(result, &discovery); err != nil {
+	if err := protocol.FlexibleUnmarshal(result, &discovery); err != nil {
 		fmt.Printf("❌ Failed to parse discovery result: %v\n", err)
 		return
 	}
@@ -334,7 +336,7 @@ func (c *TestClient) testSubscriptions() {
 	}
 
 	var subResponse map[string]interface{}
-	if err := json.Unmarshal(result, &subResponse); err != nil {
+	if err := protocol.FlexibleUnmarshal(result, &subResponse); err != nil {
 		fmt.Printf("❌ Failed to parse subscription response: %v\n", err)
 		return
 	}

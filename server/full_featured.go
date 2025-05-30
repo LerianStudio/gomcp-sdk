@@ -381,17 +381,7 @@ func hasPrefix(s, prefix string) bool {
 	return len(s) >= len(prefix) && s[:len(prefix)] == prefix
 }
 
-// parseParamsFullFeatured is a helper to parse request parameters
+// parseParamsFullFeatured is a helper to parse request parameters with flexible handling
 func parseParamsFullFeatured(params interface{}, target interface{}) error {
-	if params == nil {
-		return nil
-	}
-
-	// Convert to JSON and back to target type
-	data, err := json.Marshal(params)
-	if err != nil {
-		return err
-	}
-
-	return json.Unmarshal(data, target)
+	return protocol.FlexibleParseParams(params, target)
 }

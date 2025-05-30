@@ -257,20 +257,27 @@ func (t *WebSocketTransport) handleConnection(conn *websocket.Conn) {
 				continue
 			}
 
-			// Parse JSON-RPC request
-			var req protocol.JSONRPCRequest
-			if err := json.Unmarshal(message, &req); err != nil {
-				t.sendError(conn, nil, protocol.ParseError, "Invalid JSON", nil)
+			// Parse message flexibly to handle both requests and error responses
+			parsed, parseErr := protocol.ParseJSONRPCMessage(message)
+			if parseErr != nil {
+				if jsonRPCErr, ok := parseErr.(*protocol.JSONRPCError); ok {
+					t.sendError(conn, nil, jsonRPCErr.Code, jsonRPCErr.Message, jsonRPCErr.Data)
+				}
 				continue
 			}
 
-			// Handle request
-			ctx := context.Background()
-			resp := t.handler.HandleRequest(ctx, &req)
+			// Handle requests normally
+			if parsed.Request != nil {
+				ctx := context.Background()
+				resp := t.handler.HandleRequest(ctx, parsed.Request)
 
-			// Send response
-			if err := t.sendResponse(conn, resp); err != nil {
-				return
+				// Send response
+				if err := t.sendResponse(conn, resp); err != nil {
+					return
+				}
+			} else if parsed.Response != nil && parsed.IsError {
+				// Claude Desktop sent an error response - continue gracefully
+				continue
 			}
 		}
 	}()
