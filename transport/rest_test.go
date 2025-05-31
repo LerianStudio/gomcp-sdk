@@ -301,8 +301,12 @@ func TestRESTTransport_Authentication(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
-	t.Run("valid api key in query", func(t *testing.T) {
-		resp, err := client.Get(baseURL + "/health?api_key=" + apiKey)
+	t.Run("valid api key in Authorization header", func(t *testing.T) {
+		req, err := http.NewRequest("GET", baseURL+"/health", nil)
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+		
+		resp, err := client.Do(req)
 		require.NoError(t, err)
 		defer resp.Body.Close()
 

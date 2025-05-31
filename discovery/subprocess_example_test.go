@@ -93,7 +93,7 @@ while True:
 func CreateSubprocessHandlerConfig(scriptPath string) *HandlerConfig {
 	return &HandlerConfig{
 		Type:    HandlerTypeSubprocess,
-		Command: "python3",
+		Command: "/opt/homebrew/bin/python3", // Use actual system Python path
 		Args:    []string{scriptPath},
 		Timeout: 30 * time.Second,
 	}
@@ -158,7 +158,7 @@ func RunSubprocessHandlerExample(ctx context.Context) error {
 // IsPythonAvailable checks if Python is available
 func IsPythonAvailable() bool {
 	// Use absolute path and sanitized args to prevent command injection
-	cmd := exec.Command("/usr/bin/python3", "--version")
+	cmd := exec.Command("/opt/homebrew/bin/python3", "--version")
 	cmd.Env = []string{} // Clear environment for security
 	return cmd.Run() == nil
 }

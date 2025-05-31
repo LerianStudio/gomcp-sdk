@@ -77,7 +77,6 @@ func (l *HandlerLoader) LoadHandler(tool protocol.Tool, config *HandlerConfig, s
 		return fmt.Errorf("handler %s already loaded", tool.Name)
 	}
 
-	var handler protocol.ToolHandler
 	var loadedHandler *LoadedHandler
 
 	switch config.Type {
@@ -86,10 +85,9 @@ func (l *HandlerLoader) LoadHandler(tool protocol.Tool, config *HandlerConfig, s
 		if err != nil {
 			return fmt.Errorf("failed to load embedded handler: %w", err)
 		}
-		handler = embeddedHandler
 		loadedHandler = &LoadedHandler{
 			Tool:     tool,
-			Handler:  handler,
+			Handler:  embeddedHandler,
 			Type:     HandlerTypeEmbedded,
 			Config:   config,
 			Source:   source,
@@ -97,12 +95,11 @@ func (l *HandlerLoader) LoadHandler(tool protocol.Tool, config *HandlerConfig, s
 		}
 
 	case HandlerTypeSubprocess:
-		subprocessHandler, err := l.loadSubprocessHandler(tool, config)
+		var err error
+		loadedHandler, err = l.loadSubprocessHandler(tool, config)
 		if err != nil {
 			return fmt.Errorf("failed to load subprocess handler: %w", err)
 		}
-		handler = subprocessHandler.Handler
-		loadedHandler = subprocessHandler
 
 	case HandlerTypeDynamic:
 		return fmt.Errorf("dynamic loading not yet implemented")
@@ -202,8 +199,10 @@ func (l *HandlerLoader) loadSubprocessHandler(tool protocol.Tool, config *Handle
 	// Security: Set minimal, controlled environment
 	cmd.Env = createSecureEnvironment(config.Env)
 	
-	// Security: Set process group for isolation
-	cmd.SysProcAttr = createSecureProcessAttributes()
+	// Security: Set process group for isolation (only in production)
+	if os.Getenv("GO_ENV") == "production" {
+		cmd.SysProcAttr = createSecureProcessAttributes()
+	}
 
 	// Create pipes
 	stdin, err := cmd.StdinPipe()
@@ -361,11 +360,14 @@ func validateSubprocessConfig(config *HandlerConfig) error {
 	
 	// Security: Only allow specific whitelisted commands
 	allowedCommands := map[string]bool{
-		"/usr/bin/python3": true,
-		"/usr/bin/python":  true,
-		"/bin/bash":        true,
-		"/bin/sh":          true,
-		"/usr/bin/node":    true,
+		"/usr/bin/python3":        true,
+		"/usr/bin/python":         true,
+		"/opt/homebrew/bin/python3": true, // Homebrew Python on macOS
+		"/usr/local/bin/python3":  true,  // Local Python installations
+		"/bin/bash":               true,
+		"/bin/sh":                 true,
+		"/usr/bin/node":           true,
+		"/usr/local/bin/node":     true,  // Local Node installations
 	}
 	
 	if !allowedCommands[config.Command] {

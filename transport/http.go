@@ -137,7 +137,10 @@ func (t *HTTPTransport) Start(ctx context.Context, handler RequestHandler) error
 	// Wait for context cancellation
 	go func() {
 		<-ctx.Done()
-		t.Stop()
+		if err := t.Stop(); err != nil {
+			// Log error but don't fail since context is cancelled
+			fmt.Printf("Error stopping HTTP transport: %v\n", err)
+		}
 	}()
 
 	return nil
@@ -159,7 +162,9 @@ func (t *HTTPTransport) Stop() error {
 		defer cancel()
 		err := t.server.Shutdown(ctx)
 		if t.listener != nil {
-			t.listener.Close()
+			if err := t.listener.Close(); err != nil {
+				fmt.Printf("Error closing HTTP listener: %v\n", err)
+			}
 		}
 		return err
 	}
