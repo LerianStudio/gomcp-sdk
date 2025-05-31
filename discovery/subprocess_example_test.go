@@ -157,6 +157,8 @@ func RunSubprocessHandlerExample(ctx context.Context) error {
 
 // IsPythonAvailable checks if Python is available
 func IsPythonAvailable() bool {
-	cmd := exec.Command("python3", "--version")
+	// Use absolute path and sanitized args to prevent command injection
+	cmd := exec.Command("/usr/bin/python3", "--version")
+	cmd.Env = []string{} // Clear environment for security
 	return cmd.Run() == nil
 }

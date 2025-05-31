@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+	"sync"
+
 	"github.com/fredcamaral/gomcp-sdk/protocol"
 	"github.com/fredcamaral/gomcp-sdk/transport"
-	"sync"
 )
 
 // Server represents an MCP server
@@ -162,9 +164,12 @@ func (s *Server) handleInitialize(_ context.Context, req *protocol.JSONRPCReques
 	s.initialized = true
 	s.mutex.Unlock()
 
+	// Client-aware capability negotiation
+	filteredCapabilities := s.filterCapabilitiesForClient(initReq.ClientInfo)
+	
 	result := protocol.InitializeResult{
 		ProtocolVersion: protocol.Version,
-		Capabilities:    s.capabilities,
+		Capabilities:    filteredCapabilities,
 		ServerInfo: protocol.ServerInfo{
 			Name:    s.name,
 			Version: s.version,
@@ -413,4 +418,70 @@ func (s *Server) IsInitialized() bool {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.initialized
+}
+
+// filterCapabilitiesForClient filters server capabilities based on client compatibility
+func (s *Server) filterCapabilitiesForClient(clientInfo protocol.ClientInfo) protocol.ServerCapabilities {
+	s.mutex.RLock()
+	baseCapabilities := s.capabilities
+	s.mutex.RUnlock()
+	
+	// Start with base capabilities
+	filtered := baseCapabilities
+	
+	// Detect client type and apply compatibility filters
+	clientType := detectClientType(clientInfo)
+	
+	switch clientType {
+	case "claude-desktop":
+		// Claude Desktop has strict TypeScript validation
+		// Don't advertise advanced features it might not support
+		filtered.Sampling = nil // Most clients don't support sampling
+		filtered.Roots = nil    // Most clients don't support roots
+		
+	case "vscode":
+		// VS Code extension clients
+		filtered.Sampling = nil
+		filtered.Roots = nil
+		
+	case "openai":
+		// OpenAI clients (like ChatGPT plugins)
+		filtered.Sampling = nil
+		filtered.Roots = nil
+		
+	case "anthropic":
+		// Native Anthropic clients might support more features
+		// Keep all capabilities
+		
+	default:
+		// Unknown clients - be conservative
+		filtered.Sampling = nil
+		filtered.Roots = nil
+	}
+	
+	return filtered
+}
+
+// detectClientType attempts to identify the client type from ClientInfo
+func detectClientType(clientInfo protocol.ClientInfo) string {
+	name := strings.ToLower(clientInfo.Name)
+	
+	// Known client patterns
+	if strings.Contains(name, "claude") && strings.Contains(name, "desktop") {
+		return "claude-desktop"
+	}
+	if strings.Contains(name, "vscode") || strings.Contains(name, "visual studio code") {
+		return "vscode"
+	}
+	if strings.Contains(name, "openai") || strings.Contains(name, "chatgpt") {
+		return "openai"
+	}
+	if strings.Contains(name, "anthropic") {
+		return "anthropic"
+	}
+	if strings.Contains(name, "rest") || strings.Contains(name, "curl") {
+		return "rest-client"
+	}
+	
+	return "unknown"
 }

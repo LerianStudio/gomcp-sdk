@@ -459,10 +459,14 @@ func (t *RESTTransport) wrapWithRESTMiddleware(handler http.Handler) http.Handle
 // authMiddleware handles API key authentication
 func (t *RESTTransport) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Check API key
+		// Check API key - ONLY from secure header, never from URL parameters
 		apiKey := r.Header.Get("X-API-Key")
 		if apiKey == "" {
-			apiKey = r.URL.Query().Get("api_key")
+			// Also check Authorization header with Bearer token
+			auth := r.Header.Get("Authorization")
+			if strings.HasPrefix(auth, "Bearer ") {
+				apiKey = strings.TrimPrefix(auth, "Bearer ")
+			}
 		}
 
 		if apiKey != t.restConfig.APIKey {

@@ -6,6 +6,14 @@ import (
 	"reflect"
 )
 
+// Security limits to prevent DoS attacks
+const (
+	MaxStringLength = 10 * 1024 * 1024  // 10MB max string
+	MaxSliceLength  = 100000            // 100k max slice elements  
+	MaxMapSize      = 50000             // 50k max map entries
+	MaxDepth        = 100               // Max nesting depth
+)
+
 // setFieldValue sets a reflect.Value with type conversion
 func setFieldValue(field reflect.Value, value interface{}) error {
 	if value == nil {
@@ -25,10 +33,18 @@ func setFieldValue(field reflect.Value, value interface{}) error {
 	switch fieldType.Kind() {
 	case reflect.String:
 		if str, ok := value.(string); ok {
+			// Security: Enforce string length limits
+			if err := validateStringLength(str); err != nil {
+				return err
+			}
 			field.SetString(str)
 		} else {
-			// Convert to string representation
-			field.SetString(fmt.Sprintf("%v", value))
+			// Convert to string representation with size limit
+			str := fmt.Sprintf("%v", value)
+			if err := validateStringLength(str); err != nil {
+				return err
+			}
+			field.SetString(str)
 		}
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		if num, ok := convertToInt64(value); ok {
@@ -57,6 +73,10 @@ func setFieldValue(field reflect.Value, value interface{}) error {
 	case reflect.Interface:
 		field.Set(sourceValue)
 	case reflect.Map:
+		// Security: Validate map size before processing
+		if err := validateMapSize(value); err != nil {
+			return err
+		}
 		if sourceValue.Type().AssignableTo(fieldType) {
 			field.Set(sourceValue)
 		} else {
@@ -64,6 +84,10 @@ func setFieldValue(field reflect.Value, value interface{}) error {
 			return convertMap(field, value)
 		}
 	case reflect.Slice:
+		// Security: Validate slice size before processing
+		if err := validateSliceSize(value); err != nil {
+			return err
+		}
 		return convertSlice(field, value)
 	default:
 		// For complex types, try JSON marshal/unmarshal as fallback
@@ -337,4 +361,40 @@ func ValidateAndParseParams(params interface{}, target interface{}, required []s
 
 	// Now parse with flexible handling
 	return FlexibleParseParams(params, target)
+}
+
+// Security validation functions
+
+// validateStringLength enforces maximum string length limits
+func validateStringLength(s string) error {
+	if len(s) > MaxStringLength {
+		return fmt.Errorf("string length %d exceeds maximum %d", len(s), MaxStringLength)
+	}
+	return nil
+}
+
+// validateSliceSize enforces maximum slice length limits
+func validateSliceSize(value interface{}) error {
+	rv := reflect.ValueOf(value)
+	if rv.Kind() != reflect.Slice {
+		return nil // Not a slice, skip validation
+	}
+	
+	if rv.Len() > MaxSliceLength {
+		return fmt.Errorf("slice length %d exceeds maximum %d", rv.Len(), MaxSliceLength)
+	}
+	return nil
+}
+
+// validateMapSize enforces maximum map size limits
+func validateMapSize(value interface{}) error {
+	rv := reflect.ValueOf(value)
+	if rv.Kind() != reflect.Map {
+		return nil // Not a map, skip validation
+	}
+	
+	if rv.Len() > MaxMapSize {
+		return fmt.Errorf("map size %d exceeds maximum %d", rv.Len(), MaxMapSize)
+	}
+	return nil
 }

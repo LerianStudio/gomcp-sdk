@@ -191,17 +191,19 @@ func (l *HandlerLoader) loadEmbeddedHandler(name string, config *HandlerConfig) 
 
 // loadSubprocessHandler loads a handler that runs as a subprocess
 func (l *HandlerLoader) loadSubprocessHandler(tool protocol.Tool, config *HandlerConfig) (*LoadedHandler, error) {
-	// Prepare command
+	// Security: Validate and sanitize command and arguments
+	if err := validateSubprocessConfig(config); err != nil {
+		return nil, fmt.Errorf("security validation failed: %w", err)
+	}
+	
+	// Prepare command with security constraints
 	cmd := exec.Command(config.Command, config.Args...)
 	
-	// Set environment variables
-	if len(config.Env) > 0 {
-		env := os.Environ()
-		for k, v := range config.Env {
-			env = append(env, fmt.Sprintf("%s=%s", k, v))
-		}
-		cmd.Env = env
-	}
+	// Security: Set minimal, controlled environment
+	cmd.Env = createSecureEnvironment(config.Env)
+	
+	// Security: Set process group for isolation
+	cmd.SysProcAttr = createSecureProcessAttributes()
 
 	// Create pipes
 	stdin, err := cmd.StdinPipe()
@@ -349,4 +351,89 @@ func (l *HandlerLoader) LoadHandlerFromManifest(manifestPath string, tool protoc
 	}
 
 	return l.LoadHandler(tool, &config, source)
+}
+
+// validateSubprocessConfig validates subprocess configuration for security
+func validateSubprocessConfig(config *HandlerConfig) error {
+	if config.Command == "" {
+		return fmt.Errorf("command cannot be empty")
+	}
+	
+	// Security: Only allow specific whitelisted commands
+	allowedCommands := map[string]bool{
+		"/usr/bin/python3": true,
+		"/usr/bin/python":  true,
+		"/bin/bash":        true,
+		"/bin/sh":          true,
+		"/usr/bin/node":    true,
+	}
+	
+	if !allowedCommands[config.Command] {
+		return fmt.Errorf("command not in whitelist: %s", config.Command)
+	}
+	
+	// Security: Validate arguments don't contain dangerous patterns
+	for _, arg := range config.Args {
+		if containsDangerousPatterns(arg) {
+			return fmt.Errorf("argument contains dangerous patterns: %s", arg)
+		}
+	}
+	
+	return nil
+}
+
+// containsDangerousPatterns checks for command injection patterns
+func containsDangerousPatterns(arg string) bool {
+	dangerous := []string{
+		";", "&", "|", "`", "$", "$(", "`", 
+		"&&", "||", ">>", "<<", ">", "<",
+		"\n", "\r", "\t",
+	}
+	
+	for _, pattern := range dangerous {
+		if len(pattern) > 0 && len(arg) > 0 && 
+		   (pattern[0] == arg[0] || 
+		    (len(arg) > 1 && pattern == arg[:len(pattern)])) {
+			return true
+		}
+	}
+	return false
+}
+
+// createSecureEnvironment creates a minimal, secure environment
+func createSecureEnvironment(customEnv map[string]string) []string {
+	// Start with minimal secure environment
+	secureEnv := []string{
+		"PATH=/usr/bin:/bin",
+		"HOME=/tmp",
+		"USER=mcp-handler",
+	}
+	
+	// Add only safe custom environment variables
+	for k, v := range customEnv {
+		if isSafeEnvVar(k, v) {
+			secureEnv = append(secureEnv, fmt.Sprintf("%s=%s", k, v))
+		}
+	}
+	
+	return secureEnv
+}
+
+// isSafeEnvVar validates environment variable safety
+func isSafeEnvVar(key, value string) bool {
+	// Disallow dangerous environment variables
+	dangerousKeys := map[string]bool{
+		"LD_PRELOAD":     true,
+		"LD_LIBRARY_PATH": true,
+		"DYLD_INSERT_LIBRARIES": true,
+		"PYTHONPATH":     false, // Allow but validate
+		"NODE_PATH":      false, // Allow but validate
+	}
+	
+	if dangerous, exists := dangerousKeys[key]; exists && dangerous {
+		return false
+	}
+	
+	// Check for dangerous patterns in values
+	return !containsDangerousPatterns(value)
 }

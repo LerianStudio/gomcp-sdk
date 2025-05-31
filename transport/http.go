@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -173,6 +174,13 @@ func (t *HTTPTransport) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Security: Validate Content-Type for JSON-RPC protocol compliance
+	contentType := r.Header.Get("Content-Type")
+	if contentType != "" && !isValidJSONContentType(contentType) {
+		t.writeError(w, protocol.ParseError, "Invalid Content-Type: expected application/json", nil)
+		return
+	}
+
 	// Limit request body size
 	r.Body = http.MaxBytesReader(w, r.Body, t.config.MaxBodySize)
 
@@ -306,4 +314,30 @@ func (t *HTTPTransport) Address() string {
 		return t.listener.Addr().String()
 	}
 	return t.config.Address
+}
+
+// isValidJSONContentType validates that the content type is appropriate for JSON-RPC
+func isValidJSONContentType(contentType string) bool {
+	// Split content type and charset/boundary parameters
+	parts := strings.Split(strings.ToLower(contentType), ";")
+	if len(parts) == 0 {
+		return false
+	}
+	
+	mediaType := strings.TrimSpace(parts[0])
+	
+	// Accept standard JSON media types
+	validTypes := []string{
+		"application/json",
+		"application/json-rpc",
+		"text/json",
+	}
+	
+	for _, validType := range validTypes {
+		if mediaType == validType {
+			return true
+		}
+	}
+	
+	return false
 }
