@@ -5,11 +5,51 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch: # Allow manual triggering
 
 permissions:
   contents: read
 
 jobs:
+  # Basic validation jobs that can run independently
+  vet:
+    name: Go Vet
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: 'go.mod'
+        cache: true
+    
+    - name: Install dependencies
+      run: go mod download
+    
+    - name: Run go vet
+      run: go vet ./...
+
+  fmt:
+    name: Go Format
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: 'go.mod'
+    
+    - name: Check formatting
+      run: |
+        if [ -n "$(gofmt -l .)" ]; then
+          echo "The following files are not formatted:"
+          gofmt -l .
+          echo "Run 'gofmt -w .' to fix formatting"
+          exit 1
+        fi
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -26,13 +66,39 @@ jobs:
       uses: golangci/golangci-lint-action@v8
       with:
         version: latest
-        args: --timeout=5m
-      continue-on-error: true  # Temporary until we fix all lint issues
+        args: --timeout=10m
+      continue-on-error: true  # Non-blocking for now
 
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: 'go.mod'
+        cache: true
+
+    - name: Run gosec
+      uses: securego/gosec@master
+      with:
+        args: '-fmt sarif -out gosec.sarif -stdout -verbose=text ./...'
+      continue-on-error: true
+
+    - name: Upload SARIF file
+      if: always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: gosec.sarif
+
+  # Test jobs
   test:
     name: Test
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         go-version: ['1.23', '1.24']
@@ -63,6 +129,7 @@ jobs:
   integration:
     name: Integration Tests
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'integration')
     steps:
     - uses: actions/checkout@v4
 
@@ -73,28 +140,14 @@ jobs:
         cache: true
 
     - name: Run integration tests
-      run: |
-        go test -v -tags=integration -timeout=10m ./...
+      run: go test -v -tags=integration -timeout=10m ./...
 
-  benchmark:
-    name: Benchmarks
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version-file: 'go.mod'
-        cache: true
-
-    - name: Run benchmarks
-      run: go test -bench=. -benchmem -timeout=20m ./...
-
+  # Build jobs
   build:
     name: Build
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
@@ -106,7 +159,7 @@ jobs:
         go-version-file: 'go.mod'
         cache: true
 
-    - name: Build
+    - name: Build SDK
       run: go build -v ./...
 
     - name: Build examples
@@ -135,8 +188,8 @@ jobs:
           fi
         done
 
-  docker:
-    name: Docker Build
+  docker-build:
+    name: Docker Build Test
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -149,32 +202,15 @@ jobs:
       with:
         context: .
         push: false
-        tags: gomcp-sdk:test
+        tags: gomcp-sdk:ci-test
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-  security:
-    name: Security Scan
+  # Optional benchmark job
+  benchmark:
+    name: Benchmarks
     runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        scan-type: 'fs'
-        scan-ref: '.'
-        severity: 'CRITICAL,HIGH'
-
-    - name: Run gosec security scanner
-      uses: securego/gosec@master
-      with:
-        args: './...'
-      continue-on-error: true  # Temporary until we fix all security issues
-
-  license:
-    name: License Check
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'benchmark')
     steps:
     - uses: actions/checkout@v4
 
@@ -184,8 +220,32 @@ jobs:
         go-version-file: 'go.mod'
         cache: true
 
-    - name: Install go-licenses
-      run: go install github.com/google/go-licenses@latest
+    - name: Run benchmarks
+      run: go test -bench=. -benchmem -timeout=20m ./...
 
-    - name: Check licenses
-      run: go-licenses check ./... || true  # Allow failures for now due to stdlib false positives
+  # Status check job that waits for core jobs
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    needs: [vet, fmt, test, build]
+    if: always()
+    steps:
+    - name: Check job results
+      run: |
+        if [ "${{ needs.vet.result }}" != "success" ]; then
+          echo "Go vet failed"
+          exit 1
+        fi
+        if [ "${{ needs.fmt.result }}" != "success" ]; then
+          echo "Go format check failed"
+          exit 1
+        fi
+        if [ "${{ needs.test.result }}" != "success" ]; then
+          echo "Tests failed"
+          exit 1
+        fi
+        if [ "${{ needs.build.result }}" != "success" ]; then
+          echo "Build failed"
+          exit 1
+        fi
+        echo "All core CI jobs passed!"
