@@ -278,7 +278,9 @@ func TestStdioTransportStop(t *testing.T) {
 	handler := newMockRequestHandler()
 
 	// Start in background
-	go transport.Start(ctx, handler)
+	go func() {
+		_ = transport.Start(ctx, handler)
+	}()
 
 	// Give it time to start
 	time.Sleep(10 * time.Millisecond)
@@ -413,10 +415,10 @@ func TestIsRunning(t *testing.T) {
 	go func() {
 		time.Sleep(50 * time.Millisecond)
 		// Write a valid JSON-RPC request
-		writer.Write([]byte(`{"jsonrpc":"2.0","id":1,"method":"test"}` + "\n"))
+		_, _ = writer.Write([]byte(`{"jsonrpc":"2.0","id":1,"method":"test"}` + "\n"))
 		// Keep the pipe open for a bit
 		time.Sleep(200 * time.Millisecond)
-		writer.Close()
+		_ = writer.Close()
 	}()
 
 	// Start in background
@@ -498,7 +500,7 @@ func BenchmarkStdioTransportSingleRequest(b *testing.B) {
 		transport := NewStdioTransportWithIO(input, output)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-		transport.Start(ctx, handler)
+		_ = transport.Start(ctx, handler)
 		cancel()
 	}
 }
@@ -514,7 +516,7 @@ func BenchmarkStdioTransportMultipleRequests(b *testing.B) {
 		transport := NewStdioTransportWithIO(input, output)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-		transport.Start(ctx, handler)
+		_ = transport.Start(ctx, handler)
 		cancel()
 	}
 }
