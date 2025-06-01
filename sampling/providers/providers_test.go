@@ -11,19 +11,19 @@ import (
 
 func TestRetryConfig(t *testing.T) {
 	config := DefaultRetryConfig()
-	
+
 	if config.MaxRetries != 3 {
 		t.Errorf("MaxRetries = %d, want 3", config.MaxRetries)
 	}
-	
+
 	if config.InitialBackoff != 1*time.Second {
 		t.Errorf("InitialBackoff = %v, want 1s", config.InitialBackoff)
 	}
-	
+
 	if config.MaxBackoff != 30*time.Second {
 		t.Errorf("MaxBackoff = %v, want 30s", config.MaxBackoff)
 	}
-	
+
 	if config.BackoffFactor != 2.0 {
 		t.Errorf("BackoffFactor = %v, want 2.0", config.BackoffFactor)
 	}

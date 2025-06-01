@@ -7,14 +7,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"time"
-	
+
 	"github.com/fredcamaral/gomcp-sdk/protocol"
 )
 
 // CreateExampleSubprocessHandler creates an example subprocess handler script
 func CreateExampleSubprocessHandler(dir string, toolName string) (string, error) {
 	scriptPath := filepath.Join(dir, fmt.Sprintf("%s_handler.py", toolName))
-	
+
 	// Create a simple Python handler script
 	scriptContent := `#!/usr/bin/env python3
 import json
@@ -80,12 +80,12 @@ while True:
 	if err := os.WriteFile(scriptPath, []byte(scriptContent), 0755); err != nil {
 		return "", err
 	}
-	
+
 	// Make it executable
 	if err := os.Chmod(scriptPath, 0755); err != nil {
 		return "", err
 	}
-	
+
 	return scriptPath, nil
 }
 
@@ -111,23 +111,23 @@ func RunSubprocessHandlerExample(ctx context.Context) error {
 			fmt.Printf("Failed to remove temporary directory: %v\n", err)
 		}
 	}()
-	
+
 	// Create handler script
 	scriptPath, err := CreateExampleSubprocessHandler(tmpDir, "python")
 	if err != nil {
 		return fmt.Errorf("failed to create handler script: %w", err)
 	}
-	
+
 	// Create handler configuration
 	config := CreateSubprocessHandlerConfig(scriptPath)
-	
+
 	// Create loader and load handler
 	loader := NewHandlerLoader()
 	tool := protocol.Tool{
 		Name:        "python_echo",
 		Description: "Python subprocess echo handler",
 	}
-	
+
 	if err := loader.LoadHandler(tool, config, "test"); err != nil {
 		return fmt.Errorf("failed to load handler: %w", err)
 	}
@@ -136,13 +136,13 @@ func RunSubprocessHandlerExample(ctx context.Context) error {
 			fmt.Printf("Failed to unload handler: %v\n", err)
 		}
 	}()
-	
+
 	// Get and test handler
 	handler, err := loader.GetHandler(tool.Name)
 	if err != nil {
 		return fmt.Errorf("failed to get handler: %w", err)
 	}
-	
+
 	// Test the handler
 	result, err := handler.Handle(ctx, map[string]interface{}{
 		"message": "Hello from Go!",
@@ -150,7 +150,7 @@ func RunSubprocessHandlerExample(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("handler execution failed: %w", err)
 	}
-	
+
 	fmt.Printf("Subprocess handler result: %v\n", result)
 	return nil
 }

@@ -103,19 +103,19 @@ func (p *AnthropicProvider) CreateMessage(ctx context.Context, req *Request) (*R
 
 func (p *AnthropicProvider) convertMessages(req *Request) []anthropicMessage {
 	messages := make([]anthropicMessage, 0, len(req.Messages))
-	
+
 	for _, msg := range req.Messages {
 		// Anthropic doesn't support system role in messages array
 		if msg.Role == "system" {
 			continue
 		}
-		
+
 		messages = append(messages, anthropicMessage{
 			Role:    msg.Role,
 			Content: msg.Content,
 		})
 	}
-	
+
 	return messages
 }
 
@@ -188,23 +188,23 @@ func (p *AnthropicProvider) doRequest(ctx context.Context, reqBody []byte) (*Res
 
 func (p *AnthropicProvider) executeWithRetry(ctx context.Context, fn func() error) error {
 	backoff := p.retryConfig.InitialBackoff
-	
+
 	for i := 0; i <= p.retryConfig.MaxRetries; i++ {
 		err := fn()
 		if err == nil {
 			return nil
 		}
-		
+
 		// Don't retry on last attempt
 		if i == p.retryConfig.MaxRetries {
 			return err
 		}
-		
+
 		// Check if error is retryable
 		if !p.isRetryableError(err) {
 			return err
 		}
-		
+
 		// Wait with backoff
 		select {
 		case <-ctx.Done():
@@ -217,7 +217,7 @@ func (p *AnthropicProvider) executeWithRetry(ctx context.Context, fn func() erro
 			}
 		}
 	}
-	
+
 	return fmt.Errorf("max retries exceeded")
 }
 
@@ -236,12 +236,12 @@ func (p *AnthropicProvider) isRetryableError(err error) bool {
 
 // Anthropic API types
 type anthropicRequest struct {
-	Model         string              `json:"model"`
-	Messages      []anthropicMessage  `json:"messages"`
-	MaxTokens     int                 `json:"max_tokens"`
-	Temperature   *float64            `json:"temperature,omitempty"`
-	System        string              `json:"system,omitempty"`
-	StopSequences []string            `json:"stop_sequences,omitempty"`
+	Model         string             `json:"model"`
+	Messages      []anthropicMessage `json:"messages"`
+	MaxTokens     int                `json:"max_tokens"`
+	Temperature   *float64           `json:"temperature,omitempty"`
+	System        string             `json:"system,omitempty"`
+	StopSequences []string           `json:"stop_sequences,omitempty"`
 }
 
 type anthropicMessage struct {
@@ -250,14 +250,14 @@ type anthropicMessage struct {
 }
 
 type anthropicResponse struct {
-	ID           string            `json:"id"`
-	Type         string            `json:"type"`
-	Role         string            `json:"role"`
+	ID           string             `json:"id"`
+	Type         string             `json:"type"`
+	Role         string             `json:"role"`
 	Content      []anthropicContent `json:"content"`
-	Model        string            `json:"model"`
-	StopReason   string            `json:"stop_reason"`
-	StopSequence string            `json:"stop_sequence,omitempty"`
-	Usage        anthropicUsage    `json:"usage"`
+	Model        string             `json:"model"`
+	StopReason   string             `json:"stop_reason"`
+	StopSequence string             `json:"stop_sequence,omitempty"`
+	Usage        anthropicUsage     `json:"usage"`
 }
 
 type anthropicContent struct {

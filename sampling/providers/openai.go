@@ -96,7 +96,7 @@ func (p *OpenAIProvider) CreateMessage(ctx context.Context, req *Request) (*Resp
 
 func (p *OpenAIProvider) convertMessages(req *Request) []openAIMessage {
 	messages := make([]openAIMessage, 0, len(req.Messages)+1)
-	
+
 	// Add system prompt if provided
 	if req.SystemPrompt != nil && *req.SystemPrompt != "" {
 		messages = append(messages, openAIMessage{
@@ -104,7 +104,7 @@ func (p *OpenAIProvider) convertMessages(req *Request) []openAIMessage {
 			Content: *req.SystemPrompt,
 		})
 	}
-	
+
 	// Convert messages
 	for _, msg := range req.Messages {
 		messages = append(messages, openAIMessage{
@@ -112,7 +112,7 @@ func (p *OpenAIProvider) convertMessages(req *Request) []openAIMessage {
 			Content: msg.Content,
 		})
 	}
-	
+
 	return messages
 }
 
@@ -164,7 +164,7 @@ func (p *OpenAIProvider) doRequest(ctx context.Context, reqBody []byte) (*Respon
 	}
 
 	choice := openaiResp.Choices[0]
-	
+
 	// Convert stop reason
 	stopReason := "stop"
 	if choice.FinishReason != "" {
@@ -185,23 +185,23 @@ func (p *OpenAIProvider) doRequest(ctx context.Context, reqBody []byte) (*Respon
 
 func (p *OpenAIProvider) executeWithRetry(ctx context.Context, fn func() error) error {
 	backoff := p.retryConfig.InitialBackoff
-	
+
 	for i := 0; i <= p.retryConfig.MaxRetries; i++ {
 		err := fn()
 		if err == nil {
 			return nil
 		}
-		
+
 		// Don't retry on last attempt
 		if i == p.retryConfig.MaxRetries {
 			return err
 		}
-		
+
 		// Check if error is retryable
 		if !p.isRetryableError(err) {
 			return err
 		}
-		
+
 		// Wait with backoff
 		select {
 		case <-ctx.Done():
@@ -214,7 +214,7 @@ func (p *OpenAIProvider) executeWithRetry(ctx context.Context, fn func() error) 
 			}
 		}
 	}
-	
+
 	return fmt.Errorf("max retries exceeded")
 }
 
@@ -244,10 +244,10 @@ type openAIMessage struct {
 }
 
 type openAIResponse struct {
-	ID      string          `json:"id"`
-	Model   string          `json:"model"`
-	Choices []openAIChoice  `json:"choices"`
-	Usage   openAIUsage     `json:"usage"`
+	ID      string         `json:"id"`
+	Model   string         `json:"model"`
+	Choices []openAIChoice `json:"choices"`
+	Usage   openAIUsage    `json:"usage"`
 }
 
 type openAIChoice struct {

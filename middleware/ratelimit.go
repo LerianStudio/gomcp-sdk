@@ -324,14 +324,14 @@ func (m *RateLimitMiddleware) getLimiter(identifier string) *TokenBucket {
 	if entry, ok := m.limiters[identifier]; ok {
 		limiter := entry.limiter
 		m.mu.RUnlock()
-		
+
 		// Update lastAccess with write lock
 		m.mu.Lock()
 		if entry, ok := m.limiters[identifier]; ok {
 			entry.lastAccess = time.Now()
 		}
 		m.mu.Unlock()
-		
+
 		return limiter
 	}
 	m.mu.RUnlock()

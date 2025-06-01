@@ -31,11 +31,11 @@ const (
 type HandlerConfig struct {
 	Type       HandlerType            `json:"type"`
 	Command    string                 `json:"command,omitempty"`    // For subprocess
-	Args       []string               `json:"args,omitempty"`        // For subprocess
-	PluginPath string                 `json:"pluginPath,omitempty"`  // For dynamic
-	Env        map[string]string      `json:"env,omitempty"`         // Environment variables
-	Timeout    time.Duration          `json:"timeout,omitempty"`     // Execution timeout
-	Config     map[string]interface{} `json:"config,omitempty"`      // Handler-specific config
+	Args       []string               `json:"args,omitempty"`       // For subprocess
+	PluginPath string                 `json:"pluginPath,omitempty"` // For dynamic
+	Env        map[string]string      `json:"env,omitempty"`        // Environment variables
+	Timeout    time.Duration          `json:"timeout,omitempty"`    // Execution timeout
+	Config     map[string]interface{} `json:"config,omitempty"`     // Handler-specific config
 }
 
 // HandlerLoader manages the loading and lifecycle of tool handlers
@@ -52,7 +52,7 @@ type LoadedHandler struct {
 	Config   *HandlerConfig
 	Source   string
 	LoadedAt time.Time
-	
+
 	// For subprocess handlers
 	process *exec.Cmd
 	stdin   io.WriteCloser
@@ -192,13 +192,13 @@ func (l *HandlerLoader) loadSubprocessHandler(tool protocol.Tool, config *Handle
 	if err := validateSubprocessConfig(config); err != nil {
 		return nil, fmt.Errorf("security validation failed: %w", err)
 	}
-	
+
 	// Prepare command with security constraints
 	cmd := exec.Command(config.Command, config.Args...)
-	
+
 	// Security: Set minimal, controlled environment
 	cmd.Env = createSecureEnvironment(config.Env)
-	
+
 	// Security: Set process group for isolation (only in production)
 	if os.Getenv("GO_ENV") == "production" {
 		cmd.SysProcAttr = createSecureProcessAttributes()
@@ -331,7 +331,7 @@ func RegisterEmbeddedHandler(name string, handler protocol.ToolHandler) {
 func (l *HandlerLoader) LoadHandlerFromManifest(manifestPath string, tool protocol.Tool, source string) error {
 	// Look for handler configuration file
 	handlerConfigPath := filepath.Join(filepath.Dir(manifestPath), fmt.Sprintf("%s.handler.json", tool.Name))
-	
+
 	// If no specific handler config, try common handler config
 	if _, err := os.Stat(handlerConfigPath); os.IsNotExist(err) {
 		handlerConfigPath = filepath.Join(filepath.Dir(manifestPath), "handler.json")
@@ -357,45 +357,45 @@ func validateSubprocessConfig(config *HandlerConfig) error {
 	if config.Command == "" {
 		return fmt.Errorf("command cannot be empty")
 	}
-	
+
 	// Security: Only allow specific whitelisted commands
 	allowedCommands := map[string]bool{
-		"/usr/bin/python3":        true,
-		"/usr/bin/python":         true,
+		"/usr/bin/python3":          true,
+		"/usr/bin/python":           true,
 		"/opt/homebrew/bin/python3": true, // Homebrew Python on macOS
-		"/usr/local/bin/python3":  true,  // Local Python installations
-		"/bin/bash":               true,
-		"/bin/sh":                 true,
-		"/usr/bin/node":           true,
-		"/usr/local/bin/node":     true,  // Local Node installations
+		"/usr/local/bin/python3":    true, // Local Python installations
+		"/bin/bash":                 true,
+		"/bin/sh":                   true,
+		"/usr/bin/node":             true,
+		"/usr/local/bin/node":       true, // Local Node installations
 	}
-	
+
 	if !allowedCommands[config.Command] {
 		return fmt.Errorf("command not in whitelist: %s", config.Command)
 	}
-	
+
 	// Security: Validate arguments don't contain dangerous patterns
 	for _, arg := range config.Args {
 		if containsDangerousPatterns(arg) {
 			return fmt.Errorf("argument contains dangerous patterns: %s", arg)
 		}
 	}
-	
+
 	return nil
 }
 
 // containsDangerousPatterns checks for command injection patterns
 func containsDangerousPatterns(arg string) bool {
 	dangerous := []string{
-		";", "&", "|", "`", "$", "$(", "`", 
+		";", "&", "|", "`", "$", "$(", "`",
 		"&&", "||", ">>", "<<", ">", "<",
 		"\n", "\r", "\t",
 	}
-	
+
 	for _, pattern := range dangerous {
-		if len(pattern) > 0 && len(arg) > 0 && 
-		   (pattern[0] == arg[0] || 
-		    (len(arg) > 1 && pattern == arg[:len(pattern)])) {
+		if len(pattern) > 0 && len(arg) > 0 &&
+			(pattern[0] == arg[0] ||
+				(len(arg) > 1 && pattern == arg[:len(pattern)])) {
 			return true
 		}
 	}
@@ -410,14 +410,14 @@ func createSecureEnvironment(customEnv map[string]string) []string {
 		"HOME=/tmp",
 		"USER=mcp-handler",
 	}
-	
+
 	// Add only safe custom environment variables
 	for k, v := range customEnv {
 		if isSafeEnvVar(k, v) {
 			secureEnv = append(secureEnv, fmt.Sprintf("%s=%s", k, v))
 		}
 	}
-	
+
 	return secureEnv
 }
 
@@ -425,17 +425,17 @@ func createSecureEnvironment(customEnv map[string]string) []string {
 func isSafeEnvVar(key, value string) bool {
 	// Disallow dangerous environment variables
 	dangerousKeys := map[string]bool{
-		"LD_PRELOAD":     true,
-		"LD_LIBRARY_PATH": true,
+		"LD_PRELOAD":            true,
+		"LD_LIBRARY_PATH":       true,
 		"DYLD_INSERT_LIBRARIES": true,
-		"PYTHONPATH":     false, // Allow but validate
-		"NODE_PATH":      false, // Allow but validate
+		"PYTHONPATH":            false, // Allow but validate
+		"NODE_PATH":             false, // Allow but validate
 	}
-	
+
 	if dangerous, exists := dangerousKeys[key]; exists && dangerous {
 		return false
 	}
-	
+
 	// Check for dangerous patterns in values
 	return !containsDangerousPatterns(value)
 }

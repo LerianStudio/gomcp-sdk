@@ -120,14 +120,14 @@ func TestJSONRPCIDEdgeCases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			parsed, err := ParseJSONRPCMessage([]byte(tt.reqJSON))
-			
+
 			if tt.expectErr && err == nil {
 				t.Error("Expected error but got none")
 			}
 			if !tt.expectErr && err != nil {
 				t.Errorf("Unexpected error: %v", err)
 			}
-			
+
 			if err == nil && parsed.Request != nil {
 				// Test that response creation works
 				resp := &JSONRPCResponse{
@@ -135,7 +135,7 @@ func TestJSONRPCIDEdgeCases(t *testing.T) {
 					ID:      parsed.Request.ID,
 					Result:  "pong",
 				}
-				
+
 				_, err := json.Marshal(resp)
 				if err != nil {
 					t.Errorf("Failed to marshal response: %v", err)

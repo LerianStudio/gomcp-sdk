@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"github.com/google/uuid"
 )
 
 // Manager manages subscriptions for MCP

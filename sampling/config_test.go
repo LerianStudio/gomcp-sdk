@@ -77,7 +77,7 @@ func TestNewConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear env vars
 			os.Clearenv()
-			
+
 			// Set test env vars
 			for k, v := range tt.envVars {
 				if err := os.Setenv(k, v); err != nil {
@@ -194,7 +194,7 @@ func TestConfig_CreateProvider(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			provider, err := tt.config.CreateProvider()
-			
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateProvider() error = %v, wantErr %v", err, tt.wantErr)
 				return

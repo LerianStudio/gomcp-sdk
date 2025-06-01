@@ -276,7 +276,7 @@ func FlexibleParseParams(params interface{}, target interface{}) error {
 		// Already JSON bytes - unmarshal directly
 		return FlexibleUnmarshal(p, target)
 	case []byte:
-		// Raw bytes - unmarshal directly  
+		// Raw bytes - unmarshal directly
 		return FlexibleUnmarshal(p, target)
 	case string:
 		// JSON string - unmarshal directly
@@ -330,7 +330,7 @@ func mapToStruct(source map[string]interface{}, target interface{}) error {
 	for i := 0; i < targetValue.NumField(); i++ {
 		field := targetValue.Field(i)
 		fieldType := targetType.Field(i)
-		
+
 		// Skip unexported fields
 		if !field.CanSet() {
 			continue
@@ -355,7 +355,7 @@ func mapToStruct(source map[string]interface{}, target interface{}) error {
 		// Try to find value in source map with case-insensitive matching
 		var sourceValue interface{}
 		var found bool
-		
+
 		// First try exact match
 		if val, ok := source[fieldName]; ok {
 			sourceValue = val

@@ -78,7 +78,6 @@ func (c *sseTestClient) connect(url string) error {
 	return nil
 }
 
-
 func TestSSETransport_StartStop(t *testing.T) {
 	config := &SSEConfig{
 		HTTPConfig: HTTPConfig{

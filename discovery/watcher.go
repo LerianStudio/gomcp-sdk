@@ -76,11 +76,11 @@ func (w *PluginWatcher) Stop() error {
 		w.cancel()
 	}
 	w.wg.Wait()
-	
+
 	// Unload all handlers
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
-	
+
 	for _, manifest := range w.plugins {
 		for _, tool := range manifest.Tools {
 			if err := w.handlerLoader.UnloadHandler(tool.Name); err != nil {
@@ -88,7 +88,7 @@ func (w *PluginWatcher) Stop() error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 

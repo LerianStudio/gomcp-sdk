@@ -9,13 +9,13 @@ import (
 type Provider interface {
 	// CreateMessage sends a message to the LLM and returns the response
 	CreateMessage(ctx context.Context, req *Request) (*Response, error)
-	
+
 	// GetName returns the provider name
 	GetName() string
-	
+
 	// GetSupportedModels returns the list of supported models
 	GetSupportedModels() []string
-	
+
 	// IsModelSupported checks if a model is supported
 	IsModelSupported(model string) bool
 }

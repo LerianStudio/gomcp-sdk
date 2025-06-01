@@ -25,7 +25,7 @@ func echoHandler(ctx context.Context, params map[string]interface{}) (interface{
 	}
 
 	return map[string]interface{}{
-		"echo": message,
+		"echo":      message,
 		"timestamp": time.Now().Format(time.RFC3339),
 	}, nil
 }
@@ -115,7 +115,7 @@ func calculateHandler(ctx context.Context, params map[string]interface{}) (inter
 	}
 
 	return map[string]interface{}{
-		"result": result,
+		"result":    result,
 		"operation": operation,
 		"inputs": map[string]interface{}{
 			"a": a,
@@ -167,7 +167,7 @@ func (h *ConfigurableEchoHandler) Handle(ctx context.Context, params map[string]
 	}
 
 	return map[string]interface{}{
-		"echo": fmt.Sprintf("%s%s%s", h.prefix, message, h.suffix),
+		"echo":       fmt.Sprintf("%s%s%s", h.prefix, message, h.suffix),
 		"configured": true,
 	}, nil
 }

@@ -652,7 +652,7 @@ func TestHTTPSTransport_CertificateScenarios(t *testing.T) {
 			}
 
 			reqBody, err := json.Marshal(req)
-	require.NoError(t, err)
+			require.NoError(t, err)
 			resp, err := client.Post("https://"+addr+"/", "application/json", bytes.NewReader(reqBody))
 
 			if tt.expectError {
@@ -742,7 +742,7 @@ func TestHTTPSTransport_MutualTLS(t *testing.T) {
 		}
 
 		reqBody, err := json.Marshal(req)
-	require.NoError(t, err)
+		require.NoError(t, err)
 		resp, err := client.Post("https://"+addr+"/", "application/json", bytes.NewReader(reqBody))
 		require.NoError(t, err)
 		defer func() { _ = resp.Body.Close() }()

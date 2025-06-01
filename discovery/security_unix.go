@@ -13,11 +13,11 @@ func createSecureProcessAttributes() *syscall.SysProcAttr {
 		// Create new process group for isolation
 		Setpgid: true,
 		Pgid:    0,
-		
+
 		// Prevent core dumps for security
 		Noctty: true,
 	}
-	
+
 	// Only apply user/group restrictions in production environments
 	// Skip for testing to avoid permission issues
 	if os.Getenv("GO_ENV") == "production" {
@@ -28,6 +28,6 @@ func createSecureProcessAttributes() *syscall.SysProcAttr {
 			Gid: 65534, // nobody group
 		}
 	}
-	
+
 	return attrs
 }

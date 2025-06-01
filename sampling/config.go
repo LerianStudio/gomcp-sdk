@@ -12,19 +12,19 @@ import (
 type Config struct {
 	// Provider specifies which LLM provider to use (openai, anthropic)
 	Provider string
-	
+
 	// APIKey is the API key for the selected provider
 	APIKey string
-	
+
 	// DefaultModel is the default model to use if none is specified
 	DefaultModel string
-	
+
 	// EnableLogging enables detailed logging
 	EnableLogging bool
-	
+
 	// RetryConfig specifies retry behavior
 	RetryConfig *providers.RetryConfig
-	
+
 	// ModelMapping allows mapping from generic model names to provider-specific ones
 	ModelMapping map[string]string
 }
@@ -39,7 +39,7 @@ func NewConfig() *Config {
 		RetryConfig:   providers.DefaultRetryConfig(),
 		ModelMapping:  make(map[string]string),
 	}
-	
+
 	// Set provider-specific API key if generic one not set
 	if config.APIKey == "" {
 		switch config.Provider {
@@ -49,7 +49,7 @@ func NewConfig() *Config {
 			config.APIKey = getEnv("ANTHROPIC_API_KEY", "")
 		}
 	}
-	
+
 	// Set default model based on provider
 	if config.DefaultModel == "" {
 		switch config.Provider {
@@ -59,10 +59,10 @@ func NewConfig() *Config {
 			config.DefaultModel = "claude-3-haiku-20240307"
 		}
 	}
-	
+
 	// Setup model mappings for cross-provider compatibility
 	config.setupModelMappings()
-	
+
 	return config
 }
 
@@ -71,15 +71,15 @@ func (c *Config) Validate() error {
 	if c.Provider == "" {
 		return fmt.Errorf("provider must be specified")
 	}
-	
+
 	if c.Provider != "openai" && c.Provider != "anthropic" {
 		return fmt.Errorf("unsupported provider: %s (supported: openai, anthropic)", c.Provider)
 	}
-	
+
 	if c.APIKey == "" {
 		return fmt.Errorf("API key must be provided for provider %s", c.Provider)
 	}
-	
+
 	return nil
 }
 
@@ -88,9 +88,9 @@ func (c *Config) CreateProvider() (providers.Provider, error) {
 	if err := c.Validate(); err != nil {
 		return nil, err
 	}
-	
+
 	var provider providers.Provider
-	
+
 	switch c.Provider {
 	case "openai":
 		p := providers.NewOpenAIProvider(c.APIKey)
@@ -98,18 +98,18 @@ func (c *Config) CreateProvider() (providers.Provider, error) {
 			p.SetRetryConfig(c.RetryConfig)
 		}
 		provider = p
-		
+
 	case "anthropic":
 		p := providers.NewAnthropicProvider(c.APIKey)
 		if c.RetryConfig != nil {
 			p.SetRetryConfig(c.RetryConfig)
 		}
 		provider = p
-		
+
 	default:
 		return nil, fmt.Errorf("unsupported provider: %s", c.Provider)
 	}
-	
+
 	return provider, nil
 }
 
@@ -119,10 +119,10 @@ func (c *Config) MapModel(model string) string {
 	if mapped, ok := c.ModelMapping[model]; ok {
 		return mapped
 	}
-	
+
 	// Handle generic model names
 	lowerModel := strings.ToLower(model)
-	
+
 	switch c.Provider {
 	case "openai":
 		switch {
@@ -133,7 +133,7 @@ func (c *Config) MapModel(model string) string {
 		default:
 			return model
 		}
-		
+
 	case "anthropic":
 		switch {
 		case strings.Contains(lowerModel, "claude-3-opus"):
@@ -150,7 +150,7 @@ func (c *Config) MapModel(model string) string {
 			return model
 		}
 	}
-	
+
 	return model
 }
 
@@ -161,7 +161,7 @@ func (c *Config) setupModelMappings() {
 		c.ModelMapping["claude-3-opus"] = "gpt-4"
 		c.ModelMapping["claude-3-sonnet"] = "gpt-4"
 		c.ModelMapping["claude-3-haiku"] = "gpt-3.5-turbo"
-		
+
 	case "anthropic":
 		c.ModelMapping["gpt-4"] = "claude-3-opus-20240229"
 		c.ModelMapping["gpt-3.5-turbo"] = "claude-3-haiku-20240307"
@@ -181,6 +181,6 @@ func getEnvBool(key string, defaultValue bool) bool {
 	if value == "" {
 		return defaultValue
 	}
-	
+
 	return strings.ToLower(value) == "true" || value == "1"
 }

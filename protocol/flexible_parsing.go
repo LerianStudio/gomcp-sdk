@@ -8,10 +8,10 @@ import (
 
 // Security limits to prevent DoS attacks
 const (
-	MaxStringLength = 10 * 1024 * 1024  // 10MB max string
-	MaxSliceLength  = 100000            // 100k max slice elements  
-	MaxMapSize      = 50000             // 50k max map entries
-	MaxDepth        = 100               // Max nesting depth
+	MaxStringLength = 10 * 1024 * 1024 // 10MB max string
+	MaxSliceLength  = 100000           // 100k max slice elements
+	MaxMapSize      = 50000            // 50k max map entries
+	MaxDepth        = 100              // Max nesting depth
 )
 
 // setFieldValue sets a reflect.Value with type conversion
@@ -95,12 +95,12 @@ func setFieldValue(field reflect.Value, value interface{}) error {
 		if err != nil {
 			return fmt.Errorf("cannot marshal value for field conversion: %w", err)
 		}
-		
+
 		newValue := reflect.New(fieldType)
 		if err := json.Unmarshal(jsonBytes, newValue.Interface()); err != nil {
 			return fmt.Errorf("cannot unmarshal value for field conversion: %w", err)
 		}
-		
+
 		field.Set(newValue.Elem())
 	}
 
@@ -245,17 +245,17 @@ func convertMap(field reflect.Value, value interface{}) error {
 
 	mapType := field.Type()
 	newMap := reflect.MakeMap(mapType)
-	
+
 	for k, v := range sourceMap {
 		keyValue := reflect.ValueOf(k)
 		valueValue := reflect.ValueOf(v)
-		
-		if keyValue.Type().AssignableTo(mapType.Key()) && 
-		   valueValue.Type().AssignableTo(mapType.Elem()) {
+
+		if keyValue.Type().AssignableTo(mapType.Key()) &&
+			valueValue.Type().AssignableTo(mapType.Elem()) {
 			newMap.SetMapIndex(keyValue, valueValue)
 		}
 	}
-	
+
 	field.Set(newMap)
 	return nil
 }
@@ -268,11 +268,11 @@ func convertSlice(field reflect.Value, value interface{}) error {
 
 	sliceType := field.Type()
 	newSlice := reflect.MakeSlice(sliceType, sourceSlice.Len(), sourceSlice.Len())
-	
+
 	for i := 0; i < sourceSlice.Len(); i++ {
 		sourceElem := sourceSlice.Index(i)
 		targetElem := newSlice.Index(i)
-		
+
 		if sourceElem.Type().AssignableTo(sliceType.Elem()) {
 			targetElem.Set(sourceElem)
 		} else {
@@ -281,7 +281,7 @@ func convertSlice(field reflect.Value, value interface{}) error {
 			if elemType.Kind() == reflect.Struct {
 				// Create a new instance of the target type
 				newElem := reflect.New(elemType)
-				
+
 				// Convert using mapToStruct if source is a map
 				if sourceMap, ok := sourceElem.Interface().(map[string]interface{}); ok {
 					if err := mapToStruct(sourceMap, newElem.Interface()); err != nil {
@@ -293,7 +293,7 @@ func convertSlice(field reflect.Value, value interface{}) error {
 						return fmt.Errorf("failed to convert slice element %d: %w", i, err)
 					}
 				}
-				
+
 				targetElem.Set(newElem.Elem())
 			} else {
 				// For non-struct types, use the existing setFieldValue
@@ -303,7 +303,7 @@ func convertSlice(field reflect.Value, value interface{}) error {
 			}
 		}
 	}
-	
+
 	field.Set(newSlice)
 	return nil
 }
@@ -379,7 +379,7 @@ func validateSliceSize(value interface{}) error {
 	if rv.Kind() != reflect.Slice {
 		return nil // Not a slice, skip validation
 	}
-	
+
 	if rv.Len() > MaxSliceLength {
 		return fmt.Errorf("slice length %d exceeds maximum %d", rv.Len(), MaxSliceLength)
 	}
@@ -392,7 +392,7 @@ func validateMapSize(value interface{}) error {
 	if rv.Kind() != reflect.Map {
 		return nil // Not a map, skip validation
 	}
-	
+
 	if rv.Len() > MaxMapSize {
 		return fmt.Errorf("map size %d exceeds maximum %d", rv.Len(), MaxMapSize)
 	}

@@ -28,11 +28,11 @@ func NewHandlerWithConfig(config *Config) *Handler {
 	h := &Handler{
 		config: config,
 	}
-	
+
 	if config.EnableLogging {
 		h.logger = log.New(log.Writer(), "[sampling] ", log.LstdFlags|log.Lshortfile)
 	}
-	
+
 	// Create provider
 	provider, err := config.CreateProvider()
 	if err != nil {
@@ -43,7 +43,7 @@ func NewHandlerWithConfig(config *Config) *Handler {
 	} else {
 		h.provider = provider
 	}
-	
+
 	return h
 }
 
@@ -82,7 +82,7 @@ func (h *Handler) CreateMessage(ctx context.Context, params json.RawMessage) (in
 			// Handle structured content by converting to string
 			content = string(msg.Content.Data)
 		}
-		
+
 		providerMessages = append(providerMessages, providers.Message{
 			Role:    msg.Role,
 			Content: content,
@@ -91,7 +91,7 @@ func (h *Handler) CreateMessage(ctx context.Context, params json.RawMessage) (in
 
 	// Determine model to use
 	model := h.determineModel(&req)
-	
+
 	// Build provider request
 	providerReq := &providers.Request{
 		Messages:      providerMessages,
@@ -148,7 +148,7 @@ func (h *Handler) determineModel(req *CreateMessageRequest) string {
 			}
 		}
 	}
-	
+
 	// Use default model
 	return h.config.DefaultModel
 }
@@ -156,7 +156,7 @@ func (h *Handler) determineModel(req *CreateMessageRequest) string {
 // GetCapabilities returns the sampling capabilities
 func (h *Handler) GetCapabilities() map[string]interface{} {
 	models := []string{}
-	
+
 	if h.provider != nil {
 		// Return actual supported models from the provider
 		models = h.provider.GetSupportedModels()
@@ -164,13 +164,13 @@ func (h *Handler) GetCapabilities() map[string]interface{} {
 		// Return generic model names if provider not initialized
 		models = []string{
 			"claude-3-opus",
-			"claude-3-sonnet", 
+			"claude-3-sonnet",
 			"claude-3-haiku",
 			"gpt-4",
 			"gpt-3.5-turbo",
 		}
 	}
-	
+
 	return map[string]interface{}{
 		"sampling": map[string]interface{}{
 			"enabled": h.provider != nil,

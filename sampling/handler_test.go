@@ -12,17 +12,17 @@ import (
 
 // mockProvider implements a mock LLM provider for testing
 type mockProvider struct {
-	name           string
-	models         []string
-	shouldError    bool
-	errorMessage   string
-	responseDelay  time.Duration
-	lastRequest    *providers.Request
+	name          string
+	models        []string
+	shouldError   bool
+	errorMessage  string
+	responseDelay time.Duration
+	lastRequest   *providers.Request
 }
 
 func (m *mockProvider) CreateMessage(ctx context.Context, req *providers.Request) (*providers.Response, error) {
 	m.lastRequest = req
-	
+
 	if m.responseDelay > 0 {
 		select {
 		case <-ctx.Done():
@@ -30,11 +30,11 @@ func (m *mockProvider) CreateMessage(ctx context.Context, req *providers.Request
 		case <-time.After(m.responseDelay):
 		}
 	}
-	
+
 	if m.shouldError {
 		return nil, errors.New(m.errorMessage)
 	}
-	
+
 	return &providers.Response{
 		Content:    "Mock response for: " + req.Messages[len(req.Messages)-1].Content,
 		Model:      req.Model,
@@ -212,7 +212,7 @@ func TestHandler_CreateMessage(t *testing.T) {
 
 			// Call CreateMessage
 			resp, err := h.CreateMessage(context.Background(), params)
-			
+
 			// Check error
 			if tt.wantError {
 				if err == nil {
@@ -222,7 +222,7 @@ func TestHandler_CreateMessage(t *testing.T) {
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 				return
@@ -294,11 +294,11 @@ func TestHandler_GetCapabilities(t *testing.T) {
 			}
 
 			got := h.GetCapabilities()
-			
+
 			// Compare enabled status
 			gotSampling := got["sampling"].(map[string]interface{})
 			wantSampling := tt.want["sampling"].(map[string]interface{})
-			
+
 			if gotSampling["enabled"] != wantSampling["enabled"] {
 				t.Errorf("enabled = %v, want %v", gotSampling["enabled"], wantSampling["enabled"])
 			}
@@ -306,7 +306,7 @@ func TestHandler_GetCapabilities(t *testing.T) {
 			// Compare models
 			gotModels := gotSampling["models"].([]string)
 			wantModels := wantSampling["models"].([]string)
-			
+
 			if len(gotModels) != len(wantModels) {
 				t.Errorf("models length = %v, want %v", len(gotModels), len(wantModels))
 			}
@@ -439,6 +439,6 @@ func stringPtr(s string) *string {
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && s[:len(substr)] == substr || 
-		   len(s) >= len(substr) && contains(s[1:], substr)
+	return len(s) >= len(substr) && s[:len(substr)] == substr ||
+		len(s) >= len(substr) && contains(s[1:], substr)
 }
