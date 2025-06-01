@@ -70,7 +70,7 @@ func TestWebSocketTransport_Connection(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	// Get actual address
 	addr := transport.Address()
@@ -79,7 +79,7 @@ func TestWebSocketTransport_Connection(t *testing.T) {
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/ws"}
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Wait for connection to be registered
 	time.Sleep(100 * time.Millisecond)
@@ -127,7 +127,7 @@ func TestWebSocketTransport_Connection(t *testing.T) {
 	assert.Equal(t, "test.method", result["method"])
 
 	// Close connection
-	conn.Close()
+	_ = conn.Close()
 	time.Sleep(100 * time.Millisecond)
 	assert.Equal(t, 0, transport.ConnectionCount())
 }
@@ -146,7 +146,7 @@ func TestWebSocketTransport_MultipleConnections(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 
@@ -184,7 +184,7 @@ func TestWebSocketTransport_MultipleConnections(t *testing.T) {
 
 	// Close all connections
 	for _, conn := range clients {
-		conn.Close()
+		_ = conn.Close()
 	}
 
 	time.Sleep(100 * time.Millisecond)
@@ -206,7 +206,7 @@ func TestWebSocketTransport_ErrorHandling(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 
@@ -214,7 +214,7 @@ func TestWebSocketTransport_ErrorHandling(t *testing.T) {
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/ws"}
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	tests := []struct {
 		name        string
@@ -295,7 +295,7 @@ func TestWebSocketTransport_Compression(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 
@@ -307,7 +307,7 @@ func TestWebSocketTransport_Compression(t *testing.T) {
 
 	conn, _, err := dialer.Dial(u.String(), nil)
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Send request
 	req := &protocol.JSONRPCRequest{
@@ -344,7 +344,7 @@ func TestWebSocketTransport_PingPong(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 
@@ -352,7 +352,7 @@ func TestWebSocketTransport_PingPong(t *testing.T) {
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/ws"}
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	require.NoError(t, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Test server->client ping
 	pingReceived := make(chan bool, 1)
@@ -425,7 +425,7 @@ func TestWebSocketTransport_CheckOrigin(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/ws"}
@@ -457,7 +457,7 @@ func TestWebSocketTransport_CheckOrigin(t *testing.T) {
 			if tt.shouldConnect {
 				require.NoError(t, err)
 				assert.NotNil(t, conn)
-				conn.Close()
+				_ = conn.Close()
 			} else {
 				assert.Error(t, err)
 				if resp != nil {
@@ -484,14 +484,14 @@ func BenchmarkWebSocketTransport_SingleConnection(b *testing.B) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(b, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	u := url.URL{Scheme: "ws", Host: addr, Path: "/ws"}
 
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	require.NoError(b, err)
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	req := &protocol.JSONRPCRequest{
 		JSONRPC: "2.0",
@@ -530,7 +530,7 @@ func BenchmarkWebSocketTransport_Broadcast(b *testing.B) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(b, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 
@@ -540,7 +540,7 @@ func BenchmarkWebSocketTransport_Broadcast(b *testing.B) {
 		u := url.URL{Scheme: "ws", Host: addr, Path: "/ws"}
 		conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 		require.NoError(b, err)
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		// Read messages in background
 		go func() {

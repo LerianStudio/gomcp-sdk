@@ -121,7 +121,10 @@ func (t *RESTTransport) Start(ctx context.Context, handler RequestHandler) error
 	// Wait for context cancellation
 	go func() {
 		<-ctx.Done()
-		t.Stop()
+		if err := t.Stop(); err != nil {
+			// Log error but don't fail since context is cancelled
+			fmt.Printf("Error stopping REST transport: %v\n", err)
+		}
 	}()
 
 	return nil
@@ -356,7 +359,9 @@ func (t *RESTTransport) handleHealth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(health)
+	if err := json.NewEncoder(w).Encode(health); err != nil {
+		fmt.Printf("Failed to encode health response: %v\n", err)
+	}
 }
 
 // handleDocs serves API documentation
@@ -387,14 +392,18 @@ func (t *RESTTransport) handleDocs(w http.ResponseWriter, r *http.Request) {
 </html>`
 
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(html))
+	if _, err := w.Write([]byte(html)); err != nil {
+		fmt.Printf("Failed to write docs response: %v\n", err)
+	}
 }
 
 // handleOpenAPISpec serves the OpenAPI specification
 func (t *RESTTransport) handleOpenAPISpec(w http.ResponseWriter, r *http.Request) {
 	spec := t.generateOpenAPISpec()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(spec)
+	if err := json.NewEncoder(w).Encode(spec); err != nil {
+		fmt.Printf("Failed to encode OpenAPI spec: %v\n", err)
+	}
 }
 
 // writeRESTResponse converts JSON-RPC response to REST response
@@ -421,15 +430,19 @@ func (t *RESTTransport) writeRESTResponse(w http.ResponseWriter, resp *protocol.
 		}
 
 		w.WriteHeader(statusCode)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": map[string]interface{}{
 				"code":    resp.Error.Code,
 				"message": resp.Error.Message,
 				"data":    resp.Error.Data,
 			},
-		})
+		}); err != nil {
+			fmt.Printf("Failed to encode error response: %v\n", err)
+		}
 	} else {
-		json.NewEncoder(w).Encode(resp.Result)
+		if err := json.NewEncoder(w).Encode(resp.Result); err != nil {
+			fmt.Printf("Failed to encode result response: %v\n", err)
+		}
 	}
 }
 

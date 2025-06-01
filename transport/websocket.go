@@ -143,8 +143,9 @@ func (t *WebSocketTransport) Start(ctx context.Context, handler RequestHandler) 
 	t.listener = listener
 
 	t.server = &http.Server{
-		Handler:   mux,
-		TLSConfig: t.config.TLSConfig,
+		Handler:           mux,
+		TLSConfig:         t.config.TLSConfig,
+		ReadHeaderTimeout: 30 * time.Second,
 	}
 
 	t.running = true
@@ -167,7 +168,10 @@ func (t *WebSocketTransport) Start(ctx context.Context, handler RequestHandler) 
 	// Wait for context cancellation
 	go func() {
 		<-ctx.Done()
-		t.Stop()
+		if err := t.Stop(); err != nil {
+			// Log error but don't fail since context is cancelled
+			fmt.Printf("Error stopping WebSocket transport: %v\n", err)
+		}
 	}()
 
 	return nil
@@ -187,7 +191,7 @@ func (t *WebSocketTransport) Stop() error {
 	// Close all active connections
 	t.connMu.Lock()
 	for conn := range t.connections {
-		conn.Close()
+		_ = conn.Close()
 	}
 	t.connections = make(map[*websocket.Conn]bool)
 	t.connMu.Unlock()
@@ -197,7 +201,7 @@ func (t *WebSocketTransport) Stop() error {
 		defer cancel()
 		err := t.server.Shutdown(ctx)
 		if t.listener != nil {
-			t.listener.Close()
+			_ = t.listener.Close()
 		}
 		return err
 	}
@@ -228,14 +232,16 @@ func (t *WebSocketTransport) handleConnection(conn *websocket.Conn) {
 		t.connMu.Lock()
 		delete(t.connections, conn)
 		t.connMu.Unlock()
-		conn.Close()
+		_ = conn.Close()
 	}()
 
 	// Set connection parameters
 	conn.SetReadLimit(t.config.MaxMessageSize)
-	conn.SetReadDeadline(time.Now().Add(t.config.PongTimeout))
+	if err := conn.SetReadDeadline(time.Now().Add(t.config.PongTimeout)); err != nil {
+		return
+	}
 	conn.SetPongHandler(func(string) error {
-		conn.SetReadDeadline(time.Now().Add(t.config.PongTimeout))
+		_ = conn.SetReadDeadline(time.Now().Add(t.config.PongTimeout))
 		return nil
 	})
 
@@ -261,7 +267,9 @@ func (t *WebSocketTransport) handleConnection(conn *websocket.Conn) {
 			parsed, parseErr := protocol.ParseJSONRPCMessage(message)
 			if parseErr != nil {
 				if jsonRPCErr, ok := parseErr.(*protocol.JSONRPCError); ok {
-					t.sendError(conn, nil, jsonRPCErr.Code, jsonRPCErr.Message, jsonRPCErr.Data)
+					if err := t.sendError(conn, nil, jsonRPCErr.Code, jsonRPCErr.Message, jsonRPCErr.Data); err != nil {
+						return
+					}
 				}
 				continue
 			}
@@ -286,7 +294,9 @@ func (t *WebSocketTransport) handleConnection(conn *websocket.Conn) {
 	for {
 		select {
 		case <-ticker.C:
-			conn.SetWriteDeadline(time.Now().Add(t.config.WriteTimeout))
+			if err := conn.SetWriteDeadline(time.Now().Add(t.config.WriteTimeout)); err != nil {
+				return
+			}
 			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
@@ -298,7 +308,9 @@ func (t *WebSocketTransport) handleConnection(conn *websocket.Conn) {
 
 // sendResponse sends a JSON-RPC response
 func (t *WebSocketTransport) sendResponse(conn *websocket.Conn, resp *protocol.JSONRPCResponse) error {
-	conn.SetWriteDeadline(time.Now().Add(t.config.WriteTimeout))
+	if err := conn.SetWriteDeadline(time.Now().Add(t.config.WriteTimeout)); err != nil {
+		return err
+	}
 	return conn.WriteJSON(resp)
 }
 
@@ -323,7 +335,10 @@ func (t *WebSocketTransport) Broadcast(message interface{}) error {
 	}
 
 	for conn := range t.connections {
-		conn.SetWriteDeadline(time.Now().Add(t.config.WriteTimeout))
+		if err := conn.SetWriteDeadline(time.Now().Add(t.config.WriteTimeout)); err != nil {
+			// Connection might be dead, will be cleaned up by handleConnection
+			continue
+		}
 		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
 			// Connection might be dead, will be cleaned up by handleConnection
 			continue

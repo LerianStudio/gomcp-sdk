@@ -182,7 +182,7 @@ func (t *HTTPTransport) handleRequest(w http.ResponseWriter, r *http.Request) {
 	// Security: Validate Content-Type for JSON-RPC protocol compliance
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "" && !isValidJSONContentType(contentType) {
-		t.writeError(w, protocol.ParseError, "Invalid Content-Type: expected application/json", nil)
+		t.writeErrorWithID(w, nil, protocol.ParseError, "Invalid Content-Type: expected application/json", nil)
 		return
 	}
 
@@ -192,22 +192,26 @@ func (t *HTTPTransport) handleRequest(w http.ResponseWriter, r *http.Request) {
 	// Read body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		t.writeError(w, protocol.ParseError, "Failed to read request body", nil)
+		t.writeErrorWithID(w, nil, protocol.ParseError, "Failed to read request body", nil)
 		return
 	}
+
+	// Always try to extract ID first for better error responses
+	requestID := extractIDFromBody(body)
 
 	// Parse message flexibly to handle both requests and error responses
 	parsed, parseErr := protocol.ParseJSONRPCMessage(body)
 	if parseErr != nil {
 		if jsonRPCErr, ok := parseErr.(*protocol.JSONRPCError); ok {
-			t.writeError(w, jsonRPCErr.Code, jsonRPCErr.Message, jsonRPCErr.Data)
+			t.writeErrorWithID(w, requestID, jsonRPCErr.Code, jsonRPCErr.Message, jsonRPCErr.Data)
 		}
 		return
 	}
 
 	// Only handle requests in HTTP transport
 	if parsed.Request == nil {
-		t.writeError(w, protocol.InvalidRequest, "Expected JSON-RPC request", nil)
+		// For non-JSON-RPC messages, we already have the ID from extraction above
+		t.writeErrorWithID(w, requestID, protocol.InvalidRequest, "Expected JSON-RPC request", nil)
 		return
 	}
 
@@ -234,11 +238,16 @@ func (t *HTTPTransport) writeResponse(w http.ResponseWriter, resp *protocol.JSON
 	}
 }
 
-// writeError writes a JSON-RPC error response
+// writeError writes a JSON-RPC error response with nil ID (for backward compatibility)
 func (t *HTTPTransport) writeError(w http.ResponseWriter, code int, message string, data interface{}) {
+	t.writeErrorWithID(w, nil, code, message, data)
+}
+
+// writeErrorWithID writes a JSON-RPC error response with specified ID
+func (t *HTTPTransport) writeErrorWithID(w http.ResponseWriter, id interface{}, code int, message string, data interface{}) {
 	resp := &protocol.JSONRPCResponse{
 		JSONRPC: "2.0",
-		ID:      nil, // Default to null ID for protocol compliance
+		ID:      id,
 		Error:   protocol.NewJSONRPCError(code, message, data),
 	}
 	t.writeResponse(w, resp)
@@ -322,6 +331,20 @@ func (t *HTTPTransport) Address() string {
 	return t.config.Address
 }
 
+// extractIDFromBody attempts to extract an ID from JSON body for error responses
+func extractIDFromBody(body []byte) interface{} {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil // Can't parse JSON, no ID available
+	}
+
+	if id, exists := raw["id"]; exists {
+		return id
+	}
+
+	return nil
+}
+
 // isValidJSONContentType validates that the content type is appropriate for JSON-RPC
 func isValidJSONContentType(contentType string) bool {
 	// Split content type and charset/boundary parameters
@@ -329,21 +352,21 @@ func isValidJSONContentType(contentType string) bool {
 	if len(parts) == 0 {
 		return false
 	}
-	
+
 	mediaType := strings.TrimSpace(parts[0])
-	
+
 	// Accept standard JSON media types
 	validTypes := []string{
 		"application/json",
 		"application/json-rpc",
 		"text/json",
 	}
-	
+
 	for _, validType := range validTypes {
 		if mediaType == validType {
 			return true
 		}
 	}
-	
+
 	return false
 }

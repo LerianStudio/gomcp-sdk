@@ -159,7 +159,10 @@ func (t *SSETransport) Start(ctx context.Context, handler RequestHandler) error 
 	// Wait for context cancellation
 	go func() {
 		<-ctx.Done()
-		t.Stop()
+		if err := t.Stop(); err != nil {
+			// Log error but don't fail since context is cancelled
+			fmt.Printf("Error stopping SSE transport: %v\n", err)
+		}
 	}()
 
 	return nil
@@ -189,7 +192,7 @@ func (t *SSETransport) Stop() error {
 
 	// Close listener first
 	if t.listener != nil {
-		t.listener.Close()
+		_ = t.listener.Close()
 	}
 
 	// Stop HTTP server
@@ -344,7 +347,7 @@ func (t *SSETransport) handleCommand(w http.ResponseWriter, r *http.Request) {
 			case client.events <- event:
 				// Response will be sent via SSE
 				w.WriteHeader(http.StatusAccepted)
-				json.NewEncoder(w).Encode(map[string]interface{}{
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{
 					"status": "accepted",
 					"id":     req.ID,
 				})

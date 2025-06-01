@@ -94,7 +94,7 @@ func TestRESTTransport_ToolsEndpoint(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	baseURL := "http://" + addr + "/api/v1"
@@ -103,7 +103,7 @@ func TestRESTTransport_ToolsEndpoint(t *testing.T) {
 	t.Run("list tools", func(t *testing.T) {
 		resp, err := client.Get(baseURL + "/tools")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -126,7 +126,7 @@ func TestRESTTransport_ToolsEndpoint(t *testing.T) {
 		body, _ := json.Marshal(args)
 		resp, err := client.Post(baseURL+"/tools/test_tool", "application/json", bytes.NewReader(body))
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -144,7 +144,7 @@ func TestRESTTransport_ToolsEndpoint(t *testing.T) {
 	t.Run("invalid method", func(t *testing.T) {
 		resp, err := client.Post(baseURL+"/tools", "application/json", nil)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 	})
@@ -206,7 +206,7 @@ func TestRESTTransport_ResourcesEndpoint(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	baseURL := "http://" + addr + "/api/v1"
@@ -215,7 +215,7 @@ func TestRESTTransport_ResourcesEndpoint(t *testing.T) {
 	t.Run("list resources", func(t *testing.T) {
 		resp, err := client.Get(baseURL + "/resources")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -230,7 +230,7 @@ func TestRESTTransport_ResourcesEndpoint(t *testing.T) {
 	t.Run("read resource", func(t *testing.T) {
 		resp, err := client.Get(baseURL + "/resources/file:///test.txt")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -265,7 +265,7 @@ func TestRESTTransport_Authentication(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	baseURL := "http://" + addr + "/api/v1"
@@ -274,7 +274,7 @@ func TestRESTTransport_Authentication(t *testing.T) {
 	t.Run("no api key", func(t *testing.T) {
 		resp, err := client.Get(baseURL + "/health")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
@@ -285,7 +285,7 @@ func TestRESTTransport_Authentication(t *testing.T) {
 
 		resp, err := client.Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
@@ -296,7 +296,7 @@ func TestRESTTransport_Authentication(t *testing.T) {
 
 		resp, err := client.Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
@@ -305,10 +305,10 @@ func TestRESTTransport_Authentication(t *testing.T) {
 		req, err := http.NewRequest("GET", baseURL+"/health", nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", "Bearer "+apiKey)
-		
+
 		resp, err := client.Do(req)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
@@ -331,7 +331,7 @@ func TestRESTTransport_RateLimiting(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	baseURL := "http://" + addr + "/api/v1"
@@ -341,14 +341,14 @@ func TestRESTTransport_RateLimiting(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		resp, err := client.Get(baseURL + "/health")
 		require.NoError(t, err)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	}
 
 	// Next request should be rate limited
 	resp, err := client.Get(baseURL + "/health")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	assert.Equal(t, http.StatusTooManyRequests, resp.StatusCode)
 }
 
@@ -411,7 +411,7 @@ func TestRESTTransport_ErrorMapping(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	baseURL := "http://" + addr + "/api/v1"
@@ -433,7 +433,7 @@ func TestRESTTransport_ErrorMapping(t *testing.T) {
 		t.Run(tt.toolName, func(t *testing.T) {
 			resp, err := client.Post(baseURL+"/tools/"+tt.toolName, "application/json", bytes.NewReader([]byte("{}")))
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 
@@ -463,7 +463,7 @@ func TestRESTTransport_HealthEndpoint(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	baseURL := "http://" + addr + "/api/v1"
@@ -471,7 +471,7 @@ func TestRESTTransport_HealthEndpoint(t *testing.T) {
 
 	resp, err := client.Get(baseURL + "/health")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -500,7 +500,7 @@ func TestRESTTransport_OpenAPIDocumentation(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	baseURL := "http://" + addr + "/api/v1"
@@ -509,7 +509,7 @@ func TestRESTTransport_OpenAPIDocumentation(t *testing.T) {
 	t.Run("openapi spec", func(t *testing.T) {
 		resp, err := client.Get(baseURL + "/openapi.json")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
@@ -531,7 +531,7 @@ func TestRESTTransport_OpenAPIDocumentation(t *testing.T) {
 	t.Run("swagger ui", func(t *testing.T) {
 		resp, err := client.Get(baseURL + "/docs")
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, "text/html", resp.Header.Get("Content-Type"))
@@ -563,7 +563,7 @@ func BenchmarkRESTTransport_ToolCall(b *testing.B) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(b, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	baseURL := "http://" + addr + "/api/v1"
@@ -588,8 +588,8 @@ func BenchmarkRESTTransport_ToolCall(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			io.Copy(io.Discard, resp.Body)
-			resp.Body.Close()
+			_, _ = io.Copy(io.Discard, resp.Body)
+			_ = resp.Body.Close()
 		}
 	})
 }

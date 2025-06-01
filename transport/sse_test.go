@@ -54,7 +54,7 @@ func (c *sseTestClient) connect(url string) error {
 	go func() {
 		defer close(c.done)
 		scanner := bufio.NewScanner(resp.Body)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var eventData strings.Builder
 		for scanner.Scan() {
@@ -78,10 +78,6 @@ func (c *sseTestClient) connect(url string) error {
 	return nil
 }
 
-func (c *sseTestClient) close() {
-	close(c.events)
-	close(c.errors)
-}
 
 func TestSSETransport_StartStop(t *testing.T) {
 	config := &SSEConfig{
@@ -129,7 +125,7 @@ func TestSSETransport_Connection(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	baseURL := "http://" + addr
@@ -144,7 +140,7 @@ func TestSSETransport_Connection(t *testing.T) {
 	case eventData := <-client.events:
 		event, err := ParseSSEEvent(eventData)
 		require.NoError(t, err)
-		
+
 		var data map[string]interface{}
 		err = json.Unmarshal([]byte(event.Data), &data)
 		require.NoError(t, err)
@@ -158,7 +154,7 @@ func TestSSETransport_Connection(t *testing.T) {
 	case eventData := <-client.events:
 		event, err := ParseSSEEvent(eventData)
 		require.NoError(t, err)
-		
+
 		var data map[string]interface{}
 		err = json.Unmarshal([]byte(event.Data), &data)
 		require.NoError(t, err)
@@ -176,7 +172,7 @@ func TestSSETransport_Broadcast(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping SSE Broadcast test on Windows")
 	}
-	
+
 	config := &SSEConfig{
 		HTTPConfig: HTTPConfig{
 			Address: "localhost:0",
@@ -193,7 +189,7 @@ func TestSSETransport_Broadcast(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	baseURL := "http://" + addr
@@ -239,7 +235,7 @@ func TestSSETransport_Broadcast(t *testing.T) {
 		case eventData := <-client.events:
 			event, err := ParseSSEEvent(eventData)
 			require.NoError(t, err)
-			
+
 			var data map[string]interface{}
 			err = json.Unmarshal([]byte(event.Data), &data)
 			require.NoError(t, err)
@@ -266,7 +262,7 @@ func TestSSETransport_SendToClient(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	baseURL := "http://" + addr
@@ -276,7 +272,7 @@ func TestSSETransport_SendToClient(t *testing.T) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	scanner := bufio.NewScanner(resp.Body)
 	var clientID string
@@ -287,7 +283,7 @@ func TestSSETransport_SendToClient(t *testing.T) {
 		if strings.HasPrefix(line, "data: ") {
 			data := strings.TrimPrefix(line, "data: ")
 			var event map[string]interface{}
-			json.Unmarshal([]byte(data), &event)
+			_ = json.Unmarshal([]byte(data), &event)
 			if id, ok := event["clientId"]; ok {
 				clientID = id.(string)
 				break
@@ -337,7 +333,7 @@ func TestSSETransport_CommandEndpoint(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	baseURL := "http://" + addr
@@ -354,7 +350,7 @@ func TestSSETransport_CommandEndpoint(t *testing.T) {
 		body, _ := json.Marshal(req)
 		resp, err := httpClient.Post(baseURL+"/command", "application/json", bytes.NewReader(body))
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -391,12 +387,12 @@ func TestSSETransport_CommandEndpoint(t *testing.T) {
 		eventData := <-sseClient.events
 		event, err := ParseSSEEvent(eventData)
 		require.NoError(t, err)
-		
+
 		var connData map[string]interface{}
 		err = json.Unmarshal([]byte(event.Data), &connData)
 		require.NoError(t, err)
 		clientID := connData["clientId"].(string)
-		
+
 		// Drain capabilities event
 		<-sseClient.events
 
@@ -413,13 +409,13 @@ func TestSSETransport_CommandEndpoint(t *testing.T) {
 
 		resp, err := httpClient.Do(httpReq)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		// Should get accepted status
 		assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
 		var result map[string]interface{}
-		json.NewDecoder(resp.Body).Decode(&result)
+		_ = json.NewDecoder(resp.Body).Decode(&result)
 		assert.Equal(t, "accepted", result["status"])
 
 		// Response should come via SSE
@@ -428,16 +424,16 @@ func TestSSETransport_CommandEndpoint(t *testing.T) {
 			// Parse the SSE event
 			event, err := ParseSSEEvent(eventData)
 			require.NoError(t, err)
-			
+
 			// Verify event structure
 			assert.NotEmpty(t, event.Data)
 			t.Logf("Received SSE event - ID: %s, Event: %s, Data: %s", event.ID, event.Event, event.Data)
-			
+
 			// Parse JSON response from event data
 			var jsonResp protocol.JSONRPCResponse
 			err = json.Unmarshal([]byte(event.Data), &jsonResp)
 			require.NoError(t, err)
-			
+
 			// Verify response matches request
 			// Compare IDs handling JSON number conversion
 			switch expected := req.ID.(type) {
@@ -450,7 +446,7 @@ func TestSSETransport_CommandEndpoint(t *testing.T) {
 			default:
 				assert.Equal(t, req.ID, jsonResp.ID)
 			}
-			
+
 			// Check result
 			result := jsonResp.Result.(map[string]interface{})
 			assert.Equal(t, "test.method", result["echo"])
@@ -465,7 +461,7 @@ func TestSSETransport_MaxClients(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping SSE MaxClients test on Windows")
 	}
-	
+
 	config := &SSEConfig{
 		HTTPConfig: HTTPConfig{
 			Address: "localhost:0",
@@ -482,7 +478,7 @@ func TestSSETransport_MaxClients(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	baseURL := "http://" + addr + "/events"
@@ -492,13 +488,13 @@ func TestSSETransport_MaxClients(t *testing.T) {
 	// Connect max clients and keep them alive
 	responses := make([]*http.Response, 2)
 	readers := make([]*bufio.Scanner, 2)
-	
+
 	for i := 0; i < 2; i++ {
 		resp, err := client.Get(baseURL)
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		responses[i] = resp
-		
+
 		// Start reading to keep connection alive
 		readers[i] = bufio.NewScanner(resp.Body)
 		go func(scanner *bufio.Scanner) {
@@ -521,23 +517,23 @@ func TestSSETransport_MaxClients(t *testing.T) {
 	// Try to connect one more (should fail)
 	resp, err := client.Get(baseURL)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
 
 	// Close one connection
-	responses[0].Body.Close()
+	_ = responses[0].Body.Close()
 	time.Sleep(100 * time.Millisecond)
 
 	// Now should be able to connect
 	resp, err = client.Get(baseURL)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	// Cleanup
 	for _, r := range responses {
 		if r != nil && r.Body != nil {
-			r.Body.Close()
+			_ = r.Body.Close()
 		}
 	}
 }
@@ -559,7 +555,7 @@ func TestSSETransport_Heartbeat(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	baseURL := "http://" + addr + "/events"
@@ -568,7 +564,7 @@ func TestSSETransport_Heartbeat(t *testing.T) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	scanner := bufio.NewScanner(resp.Body)
 	heartbeatCount := 0
@@ -612,7 +608,7 @@ func TestSSETransport_EventBuffering(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	// Get client ID first
 	clients := transport.GetClients()
@@ -627,7 +623,7 @@ func TestSSETransport_EventBuffering(t *testing.T) {
 		if err != nil {
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		time.Sleep(5 * time.Second) // Keep connection open
 	}()
 
@@ -671,7 +667,7 @@ func BenchmarkSSETransport_Broadcast(b *testing.B) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(b, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	baseURL := "http://" + addr + "/events"
@@ -691,7 +687,7 @@ func BenchmarkSSETransport_Broadcast(b *testing.B) {
 			if err != nil {
 				return
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			scanner := bufio.NewScanner(resp.Body)
 			for scanner.Scan() {
 				select {
@@ -739,7 +735,7 @@ func BenchmarkSSETransport_DirectMessage(b *testing.B) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(b, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	// Connect a client and get its ID
 	addr := transport.Address()
@@ -751,7 +747,7 @@ func BenchmarkSSETransport_DirectMessage(b *testing.B) {
 		if err != nil {
 			return
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		scanner := bufio.NewScanner(resp.Body)
 
 		for scanner.Scan() {
@@ -783,7 +779,7 @@ func BenchmarkSSETransport_DirectMessage(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		transport.SendToClient(clientID, "benchmark", message)
+		_ = transport.SendToClient(clientID, "benchmark", message)
 	}
 }
 
@@ -885,7 +881,7 @@ func TestSSETransport_EventFormatting(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	baseURL := "http://" + addr
@@ -907,7 +903,7 @@ func TestSSETransport_EventFormatting(t *testing.T) {
 	require.NoError(t, err)
 	clientID := connData["clientId"].(string)
 	assert.NotEmpty(t, clientID)
-	
+
 	// Drain capabilities event
 	<-sseClient.events
 

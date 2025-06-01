@@ -92,7 +92,7 @@ func TestHTTPTransport_HandleRequest(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	// Get actual address
 	addr := transport.Address()
@@ -140,7 +140,7 @@ func TestHTTPTransport_HandleRequest(t *testing.T) {
 
 			resp, err := client.Post(baseURL+"/rpc", "application/json", bytes.NewReader(reqBody))
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 			assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
@@ -193,7 +193,7 @@ func TestHTTPTransport_ErrorHandling(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	baseURL := "http://" + addr
@@ -247,7 +247,7 @@ func TestHTTPTransport_ErrorHandling(t *testing.T) {
 
 			resp, err := client.Do(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			assert.Equal(t, tt.expectedCode, resp.StatusCode)
 
@@ -273,7 +273,7 @@ func TestHTTPTransport_CORS(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	baseURL := "http://" + addr
@@ -317,7 +317,7 @@ func TestHTTPTransport_CORS(t *testing.T) {
 
 			resp, err := client.Do(req)
 			require.NoError(t, err)
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 
 			if tt.expectedAllowed {
 				assert.Equal(t, tt.expectedAllowOrigin, resp.Header.Get("Access-Control-Allow-Origin"))
@@ -352,7 +352,7 @@ func TestHTTPTransport_CustomHeaders(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	client := &http.Client{Timeout: 5 * time.Second}
@@ -363,10 +363,11 @@ func TestHTTPTransport_CustomHeaders(t *testing.T) {
 		Method:  "test",
 	}
 
-	reqBody, _ := json.Marshal(req)
+	reqBody, err := json.Marshal(req)
+	require.NoError(t, err)
 	resp, err := client.Post("http://"+addr+"/", "application/json", bytes.NewReader(reqBody))
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Check custom headers
 	for k, v := range customHeaders {
@@ -393,7 +394,7 @@ func TestHTTPTransport_RecoveryMiddleware(t *testing.T) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	client := &http.Client{Timeout: 5 * time.Second}
@@ -404,10 +405,11 @@ func TestHTTPTransport_RecoveryMiddleware(t *testing.T) {
 		Method:  "test",
 	}
 
-	reqBody, _ := json.Marshal(req)
+	reqBody, err := json.Marshal(req)
+	require.NoError(t, err)
 	resp, err := client.Post("http://"+addr+"/", "application/json", bytes.NewReader(reqBody))
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Should get internal error response instead of crash
 	var jsonResp protocol.JSONRPCResponse
@@ -444,14 +446,14 @@ func TestHTTPSTransport(t *testing.T) {
 
 	err = transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 
 	// Create HTTPS client with CA cert
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(certs.CAPEMCert)
-	
+
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -468,15 +470,16 @@ func TestHTTPSTransport(t *testing.T) {
 		Method:  "test",
 	}
 
-	reqBody, _ := json.Marshal(req)
+	reqBody, err := json.Marshal(req)
+	require.NoError(t, err)
 	resp, err := client.Post("https://"+addr+"/", "application/json", bytes.NewReader(reqBody))
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var jsonResp protocol.JSONRPCResponse
 	err = json.NewDecoder(resp.Body).Decode(&jsonResp)
 	require.NoError(t, err)
-	
+
 	// Compare IDs handling JSON number conversion
 	switch expected := req.ID.(type) {
 	case int:
@@ -488,7 +491,7 @@ func TestHTTPSTransport(t *testing.T) {
 	default:
 		assert.Equal(t, req.ID, jsonResp.ID)
 	}
-	
+
 	// Check result
 	result := jsonResp.Result.(map[string]interface{})
 	assert.Equal(t, "test", result["echo"])
@@ -629,7 +632,7 @@ func TestHTTPSTransport_CertificateScenarios(t *testing.T) {
 
 			err = transport.Start(ctx, handler)
 			require.NoError(t, err)
-			defer transport.Stop()
+			defer func() { _ = transport.Stop() }()
 
 			addr := transport.Address()
 
@@ -648,7 +651,8 @@ func TestHTTPSTransport_CertificateScenarios(t *testing.T) {
 				Method:  "test",
 			}
 
-			reqBody, _ := json.Marshal(req)
+			reqBody, err := json.Marshal(req)
+	require.NoError(t, err)
 			resp, err := client.Post("https://"+addr+"/", "application/json", bytes.NewReader(reqBody))
 
 			if tt.expectError {
@@ -658,12 +662,12 @@ func TestHTTPSTransport_CertificateScenarios(t *testing.T) {
 				}
 			} else {
 				require.NoError(t, err)
-				defer resp.Body.Close()
+				defer func() { _ = resp.Body.Close() }()
 
 				var jsonResp protocol.JSONRPCResponse
 				err = json.NewDecoder(resp.Body).Decode(&jsonResp)
 				require.NoError(t, err)
-				
+
 				// Compare IDs handling JSON number conversion
 				switch expected := req.ID.(type) {
 				case int:
@@ -707,7 +711,7 @@ func TestHTTPSTransport_MutualTLS(t *testing.T) {
 
 	err = transport.Start(ctx, handler)
 	require.NoError(t, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 
@@ -737,15 +741,16 @@ func TestHTTPSTransport_MutualTLS(t *testing.T) {
 			Method:  "test",
 		}
 
-		reqBody, _ := json.Marshal(req)
+		reqBody, err := json.Marshal(req)
+	require.NoError(t, err)
 		resp, err := client.Post("https://"+addr+"/", "application/json", bytes.NewReader(reqBody))
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		var jsonResp protocol.JSONRPCResponse
 		err = json.NewDecoder(resp.Body).Decode(&jsonResp)
 		require.NoError(t, err)
-		
+
 		// Compare IDs handling JSON number conversion
 		switch expected := req.ID.(type) {
 		case int:
@@ -780,8 +785,9 @@ func TestHTTPSTransport_MutualTLS(t *testing.T) {
 			Method:  "test",
 		}
 
-		reqBody, _ := json.Marshal(req)
-		_, err := client.Post("https://"+addr+"/", "application/json", bytes.NewReader(reqBody))
+		reqBody, err := json.Marshal(req)
+		require.NoError(t, err)
+		_, err = client.Post("https://"+addr+"/", "application/json", bytes.NewReader(reqBody))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "certificate required")
 	})
@@ -802,7 +808,7 @@ func BenchmarkHTTPTransport_HandleRequest(b *testing.B) {
 
 	err := transport.Start(ctx, handler)
 	require.NoError(b, err)
-	defer transport.Stop()
+	defer func() { _ = transport.Stop() }()
 
 	addr := transport.Address()
 	client := &http.Client{
@@ -819,7 +825,8 @@ func BenchmarkHTTPTransport_HandleRequest(b *testing.B) {
 		Method:  "benchmark.test",
 		Params:  map[string]interface{}{"data": "test"},
 	}
-	reqBody, _ := json.Marshal(req)
+	reqBody, err := json.Marshal(req)
+	require.NoError(b, err)
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
@@ -828,8 +835,8 @@ func BenchmarkHTTPTransport_HandleRequest(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			io.Copy(io.Discard, resp.Body)
-			resp.Body.Close()
+			_, _ = io.Copy(io.Discard, resp.Body)
+			_ = resp.Body.Close()
 		}
 	})
 }
