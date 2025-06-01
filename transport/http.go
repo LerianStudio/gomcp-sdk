@@ -238,6 +238,7 @@ func (t *HTTPTransport) writeResponse(w http.ResponseWriter, resp *protocol.JSON
 func (t *HTTPTransport) writeError(w http.ResponseWriter, code int, message string, data interface{}) {
 	resp := &protocol.JSONRPCResponse{
 		JSONRPC: "2.0",
+		ID:      nil, // Default to null ID for protocol compliance
 		Error:   protocol.NewJSONRPCError(code, message, data),
 	}
 	t.writeResponse(w, resp)
