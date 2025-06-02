@@ -67,3 +67,5 @@ mcp-benchmark
 *.test
 mcp-validator
 debug_*.go
+CLAUDE.md
+.claude/
