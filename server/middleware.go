@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
 )
 
 // Middleware defines the interface for MCP middleware components

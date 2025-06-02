@@ -1,7 +1,7 @@
 package discovery
 
 import (
-	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
 	"time"
 )
 

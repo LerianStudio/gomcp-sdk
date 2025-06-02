@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
 	"io"
 	"strings"
 	"sync"

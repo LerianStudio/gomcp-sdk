@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"sync"
 
-	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
 )
 
 // BufferPool manages a pool of byte buffers to reduce allocations

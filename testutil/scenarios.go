@@ -3,7 +3,7 @@ package testutil
 import (
 	"context"
 	"fmt"
-	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
 	"testing"
 	"time"
 )

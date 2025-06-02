@@ -17,9 +17,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	mcp "github.com/fredcamaral/gomcp-sdk"
-	"github.com/fredcamaral/gomcp-sdk/server"
-	"github.com/fredcamaral/gomcp-sdk/transport"
+	mcp "github.com/LerianStudio/gomcp-sdk"
+	"github.com/LerianStudio/gomcp-sdk/server"
+	"github.com/LerianStudio/gomcp-sdk/transport"
 )
 
 func main() {

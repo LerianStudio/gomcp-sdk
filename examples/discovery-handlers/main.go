@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/fredcamaral/gomcp-sdk/discovery"
-	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/discovery"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
 )
 
 func main() {

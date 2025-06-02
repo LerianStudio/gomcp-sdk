@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/fredcamaral/gomcp-sdk/protocol"
-	"github.com/fredcamaral/gomcp-sdk/testutil"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/testutil"
 	"testing"
 )
 

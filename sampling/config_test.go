@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/fredcamaral/gomcp-sdk/sampling/providers"
+	"github.com/LerianStudio/gomcp-sdk/sampling/providers"
 )
 
 func TestNewConfig(t *testing.T) {

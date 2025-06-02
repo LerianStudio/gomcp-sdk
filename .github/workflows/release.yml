@@ -48,7 +48,7 @@ jobs:
         echo "## Installation" >> changelog.md
         echo "" >> changelog.md
         echo '```bash' >> changelog.md
-        echo "go get github.com/fredcamaral/gomcp-sdk@${{ steps.version.outputs.version }}" >> changelog.md
+        echo "go get github.com/LerianStudio/gomcp-sdk@${{ steps.version.outputs.version }}" >> changelog.md
         echo '```' >> changelog.md
     
     - name: Create GitHub Release

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
 )
 
 const version = "1.0.0"

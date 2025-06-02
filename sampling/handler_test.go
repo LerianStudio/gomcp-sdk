@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fredcamaral/gomcp-sdk/sampling/providers"
+	"github.com/LerianStudio/gomcp-sdk/sampling/providers"
 )
 
 // mockProvider implements a mock LLM provider for testing

@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/fredcamaral/gomcp-sdk/compatibility"
-	"github.com/fredcamaral/gomcp-sdk/discovery"
-	"github.com/fredcamaral/gomcp-sdk/notifications"
-	"github.com/fredcamaral/gomcp-sdk/protocol"
-	_ "github.com/fredcamaral/gomcp-sdk/roots"    // Used by ExtendedServer
-	_ "github.com/fredcamaral/gomcp-sdk/sampling" // Used by ExtendedServer
-	"github.com/fredcamaral/gomcp-sdk/subscriptions"
+	"github.com/LerianStudio/gomcp-sdk/compatibility"
+	"github.com/LerianStudio/gomcp-sdk/discovery"
+	"github.com/LerianStudio/gomcp-sdk/notifications"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
+	_ "github.com/LerianStudio/gomcp-sdk/roots"    // Used by ExtendedServer
+	_ "github.com/LerianStudio/gomcp-sdk/sampling" // Used by ExtendedServer
+	"github.com/LerianStudio/gomcp-sdk/subscriptions"
 )
 
 // FullFeaturedServer implements all MCP protocol features with compatibility

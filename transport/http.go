@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
 )
 
 // HTTPConfig contains configuration for HTTP transport

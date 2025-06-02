@@ -96,7 +96,7 @@ docker-compose-down:
 fmt:
 	@echo "Formatting code..."
 	@go fmt ./...
-	@goimports -w -local github.com/fredcamaral/gomcp-sdk .
+	@goimports -w -local github.com/LerianStudio/gomcp-sdk .
 
 vet:
 	@echo "Running go vet..."

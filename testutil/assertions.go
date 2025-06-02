@@ -3,7 +3,7 @@ package testutil
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
 	"reflect"
 	"testing"
 )

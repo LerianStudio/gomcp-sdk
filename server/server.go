@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/fredcamaral/gomcp-sdk/protocol"
-	"github.com/fredcamaral/gomcp-sdk/transport"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/transport"
 )
 
 // Server represents an MCP server

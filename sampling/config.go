@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/fredcamaral/gomcp-sdk/sampling/providers"
+	"github.com/LerianStudio/gomcp-sdk/sampling/providers"
 )
 
 // Config holds the configuration for the sampling handler

@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fredcamaral/gomcp-sdk/protocol"
-	"github.com/fredcamaral/gomcp-sdk/server"
-	"github.com/fredcamaral/gomcp-sdk/transport"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/server"
+	"github.com/LerianStudio/gomcp-sdk/transport"
 
 	"golang.org/x/time/rate"
 	"gopkg.in/yaml.v3"

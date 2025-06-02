@@ -1,4 +1,4 @@
-module github.com/fredcamaral/gomcp-sdk
+module github.com/LerianStudio/gomcp-sdk
 
 go 1.23.0
 

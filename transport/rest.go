@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
 )
 
 // RESTConfig contains configuration for REST API compatibility layer

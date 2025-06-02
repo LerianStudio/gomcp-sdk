@@ -3,7 +3,7 @@ package transport
 
 import (
 	"context"
-	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
 )
 
 // Transport defines the interface for MCP transport layers

@@ -3,9 +3,9 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"github.com/fredcamaral/gomcp-sdk/protocol"
-	"github.com/fredcamaral/gomcp-sdk/roots"
-	"github.com/fredcamaral/gomcp-sdk/sampling"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/roots"
+	"github.com/LerianStudio/gomcp-sdk/sampling"
 )
 
 // ExtendedServer provides additional MCP protocol features

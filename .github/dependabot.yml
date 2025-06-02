@@ -9,7 +9,7 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 10
     reviewers:
-      - "fredcamaral"
+      - "LerianStudio"
     labels:
       - "dependencies"
       - "go"
@@ -26,7 +26,7 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 5
     reviewers:
-      - "fredcamaral"
+      - "LerianStudio"
     labels:
       - "dependencies"
       - "github-actions"
@@ -43,7 +43,7 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 5
     reviewers:
-      - "fredcamaral"
+      - "LerianStudio"
     labels:
       - "dependencies"
       - "docker"

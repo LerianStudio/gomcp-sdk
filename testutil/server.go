@@ -3,9 +3,9 @@ package testutil
 import (
 	"context"
 	"fmt"
-	"github.com/fredcamaral/gomcp-sdk/protocol"
-	"github.com/fredcamaral/gomcp-sdk/server"
-	"github.com/fredcamaral/gomcp-sdk/transport"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/server"
+	"github.com/LerianStudio/gomcp-sdk/transport"
 	"sync"
 	"time"
 )

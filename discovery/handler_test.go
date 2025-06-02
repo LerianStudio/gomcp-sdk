@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
 )
 
 func TestHandlerLoader(t *testing.T) {

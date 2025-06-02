@@ -18,10 +18,10 @@ import (
 	"strings"
 	"time"
 
-	mcp "github.com/fredcamaral/gomcp-sdk"
-	"github.com/fredcamaral/gomcp-sdk/protocol"
-	"github.com/fredcamaral/gomcp-sdk/server"
-	"github.com/fredcamaral/gomcp-sdk/transport"
+	mcp "github.com/LerianStudio/gomcp-sdk"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/server"
+	"github.com/LerianStudio/gomcp-sdk/transport"
 )
 
 const (

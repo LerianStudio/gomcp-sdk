@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	mcp "github.com/fredcamaral/gomcp-sdk"
-	"github.com/fredcamaral/gomcp-sdk/protocol"
-	"github.com/fredcamaral/gomcp-sdk/server"
+	mcp "github.com/LerianStudio/gomcp-sdk"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/server"
 )
 
 // BenchmarkJSONEncoding tests JSON encoding performance

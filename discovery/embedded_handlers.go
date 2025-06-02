@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
 )
 
 // Example embedded handlers for demonstration

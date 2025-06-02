@@ -2,7 +2,7 @@ package discovery
 
 import (
 	"fmt"
-	"github.com/fredcamaral/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
 	"strings"
 	"sync"
 	"time"

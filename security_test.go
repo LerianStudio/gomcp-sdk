@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fredcamaral/gomcp-sdk/protocol"
-	"github.com/fredcamaral/gomcp-sdk/server"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/server"
 )
 
 // TestInputValidation tests various input validation scenarios

@@ -46,9 +46,9 @@ package mcp
 
 import (
 	"context"
-	"github.com/fredcamaral/gomcp-sdk/protocol"
-	"github.com/fredcamaral/gomcp-sdk/server"
-	"github.com/fredcamaral/gomcp-sdk/transport"
+	"github.com/LerianStudio/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/server"
+	"github.com/LerianStudio/gomcp-sdk/transport"
 )
 
 // NewServer creates a new MCP server with the given name and version.

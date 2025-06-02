@@ -9,9 +9,9 @@ keywords:
   - model-context-protocol
   - go
   - microservices
-home: https://github.com/fredcamaral/mcp-memory
+home: https://github.com/LerianStudio/mcp-memory
 sources:
-  - https://github.com/fredcamaral/mcp-memory
+  - https://github.com/LerianStudio/mcp-memory
 maintainers:
   - name: MCP Go Team
     email: mcp@example.com
