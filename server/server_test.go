@@ -411,7 +411,9 @@ func TestHandleToolsCall(t *testing.T) {
 	server := NewServer("test", "1.0")
 	transport := &mockTransport{}
 	server.SetTransport(transport)
-	server.Start(context.Background())
+	if err := server.Start(context.Background()); err != nil {
+		t.Fatalf("Failed to start server: %v", err)
+	}
 
 	tests := []struct {
 		name          string
@@ -451,9 +453,14 @@ func TestHandleToolsCall(t *testing.T) {
 			expectError: false,
 			checkResponse: func(t *testing.T, resp *protocol.JSONRPCResponse) {
 				// Result should be a ToolCallResult
-				resultJSON, _ := json.Marshal(resp.Result)
+				resultJSON, err := json.Marshal(resp.Result)
+				if err != nil {
+					t.Fatalf("Failed to marshal result: %v", err)
+				}
 				var result protocol.ToolCallResult
-				json.Unmarshal(resultJSON, &result)
+				if err := json.Unmarshal(resultJSON, &result); err != nil {
+					t.Fatalf("Failed to unmarshal result: %v", err)
+				}
 
 				if result.IsError {
 					t.Error("Expected successful result, got error")
@@ -488,9 +495,14 @@ func TestHandleToolsCall(t *testing.T) {
 				result, ok := resp.Result.(*protocol.ToolCallResult)
 				if !ok {
 					// Try unmarshaling
-					resultJSON, _ := json.Marshal(resp.Result)
+					resultJSON, err := json.Marshal(resp.Result)
+					if err != nil {
+						t.Fatalf("Failed to marshal result: %v", err)
+					}
 					var r protocol.ToolCallResult
-					json.Unmarshal(resultJSON, &r)
+					if err := json.Unmarshal(resultJSON, &r); err != nil {
+						t.Fatalf("Failed to unmarshal result: %v", err)
+					}
 					result = &r
 				}
 
@@ -527,9 +539,14 @@ func TestHandleToolsCall(t *testing.T) {
 			expectError: false,
 			checkResponse: func(t *testing.T, resp *protocol.JSONRPCResponse) {
 				// Should convert to JSON string
-				resultJSON, _ := json.Marshal(resp.Result)
+				resultJSON, err := json.Marshal(resp.Result)
+				if err != nil {
+					t.Fatalf("Failed to marshal result: %v", err)
+				}
 				var result protocol.ToolCallResult
-				json.Unmarshal(resultJSON, &result)
+				if err := json.Unmarshal(resultJSON, &result); err != nil {
+					t.Fatalf("Failed to unmarshal result: %v", err)
+				}
 
 				if result.IsError {
 					t.Error("Expected successful result")
@@ -571,9 +588,14 @@ func TestHandleToolsCall(t *testing.T) {
 			},
 			expectError: false, // Tool errors return as ToolCallResult with IsError=true
 			checkResponse: func(t *testing.T, resp *protocol.JSONRPCResponse) {
-				resultJSON, _ := json.Marshal(resp.Result)
+				resultJSON, err := json.Marshal(resp.Result)
+				if err != nil {
+					t.Fatalf("Failed to marshal result: %v", err)
+				}
 				var result protocol.ToolCallResult
-				json.Unmarshal(resultJSON, &result)
+				if err := json.Unmarshal(resultJSON, &result); err != nil {
+					t.Fatalf("Failed to unmarshal result: %v", err)
+				}
 
 				if !result.IsError {
 					t.Error("Expected error result")
@@ -630,7 +652,9 @@ func TestHandleResourcesList(t *testing.T) {
 	server := NewServer("test", "1.0")
 	transport := &mockTransport{}
 	server.SetTransport(transport)
-	server.Start(context.Background())
+	if err := server.Start(context.Background()); err != nil {
+		t.Fatalf("Failed to start server: %v", err)
+	}
 
 	// Add resources
 	resource1 := protocol.Resource{
@@ -686,7 +710,9 @@ func TestHandleResourcesRead(t *testing.T) {
 	server := NewServer("test", "1.0")
 	transport := &mockTransport{}
 	server.SetTransport(transport)
-	server.Start(context.Background())
+	if err := server.Start(context.Background()); err != nil {
+		t.Fatalf("Failed to start server: %v", err)
+	}
 
 	tests := []struct {
 		name           string
@@ -728,9 +754,14 @@ func TestHandleResourcesRead(t *testing.T) {
 				contents, ok := result["contents"].([]protocol.Content)
 				if !ok {
 					// Try unmarshaling
-					contentsJSON, _ := json.Marshal(result["contents"])
+					contentsJSON, err := json.Marshal(result["contents"])
+					if err != nil {
+						t.Fatalf("Failed to marshal contents: %v", err)
+					}
 					var c []protocol.Content
-					json.Unmarshal(contentsJSON, &c)
+					if err := json.Unmarshal(contentsJSON, &c); err != nil {
+						t.Fatalf("Failed to unmarshal contents: %v", err)
+					}
 					contents = c
 				}
 
@@ -828,7 +859,9 @@ func TestHandlePromptsList(t *testing.T) {
 	server := NewServer("test", "1.0")
 	transport := &mockTransport{}
 	server.SetTransport(transport)
-	server.Start(context.Background())
+	if err := server.Start(context.Background()); err != nil {
+		t.Fatalf("Failed to start server: %v", err)
+	}
 
 	// Add prompts
 	prompt1 := protocol.Prompt{
@@ -885,7 +918,9 @@ func TestHandlePromptsGet(t *testing.T) {
 	server := NewServer("test", "1.0")
 	transport := &mockTransport{}
 	server.SetTransport(transport)
-	server.Start(context.Background())
+	if err := server.Start(context.Background()); err != nil {
+		t.Fatalf("Failed to start server: %v", err)
+	}
 
 	tests := []struct {
 		name          string
@@ -931,9 +966,14 @@ func TestHandlePromptsGet(t *testing.T) {
 				messages, ok := result["messages"].([]protocol.Content)
 				if !ok {
 					// Try unmarshaling
-					messagesJSON, _ := json.Marshal(result["messages"])
+					messagesJSON, err := json.Marshal(result["messages"])
+					if err != nil {
+						t.Fatalf("Failed to marshal messages: %v", err)
+					}
 					var m []protocol.Content
-					json.Unmarshal(messagesJSON, &m)
+					if err := json.Unmarshal(messagesJSON, &m); err != nil {
+						t.Fatalf("Failed to unmarshal messages: %v", err)
+					}
 					messages = m
 				}
 
@@ -1050,7 +1090,9 @@ func TestHandleUnknownMethod(t *testing.T) {
 	server := NewServer("test", "1.0")
 	transport := &mockTransport{}
 	server.SetTransport(transport)
-	server.Start(context.Background())
+	if err := server.Start(context.Background()); err != nil {
+		t.Fatalf("Failed to start server: %v", err)
+	}
 
 	req := &protocol.JSONRPCRequest{
 		JSONRPC: "2.0",
@@ -1188,7 +1230,9 @@ func TestIsInitialized(t *testing.T) {
 	// Simulate initialization
 	transport := &mockTransport{}
 	server.SetTransport(transport)
-	server.Start(context.Background())
+	if err := server.Start(context.Background()); err != nil {
+		t.Fatalf("Failed to start server: %v", err)
+	}
 
 	initReq := &protocol.JSONRPCRequest{
 		JSONRPC: "2.0",
@@ -1328,7 +1372,9 @@ func TestEdgeCases(t *testing.T) {
 		server := NewServer("test", "1.0")
 		transport := &mockTransport{}
 		server.SetTransport(transport)
-		server.Start(context.Background())
+		if err := server.Start(context.Background()); err != nil {
+		t.Fatalf("Failed to start server: %v", err)
+	}
 
 		// Add a slow tool
 		tool := protocol.Tool{Name: "slow_tool"}

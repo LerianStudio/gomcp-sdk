@@ -321,7 +321,11 @@ func TestGetEnv(t *testing.T) {
 func TestGetEnvBool(t *testing.T) {
 	// Save current env
 	oldValue := os.Getenv("TEST_BOOL_VAR")
-	defer os.Setenv("TEST_BOOL_VAR", oldValue)
+	defer func() {
+		if err := os.Setenv("TEST_BOOL_VAR", oldValue); err != nil {
+			t.Logf("Failed to restore TEST_BOOL_VAR: %v", err)
+		}
+	}()
 
 	tests := []struct {
 		name         string
@@ -363,7 +367,9 @@ func TestGetEnvBool(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			os.Setenv("TEST_BOOL_VAR", tt.envValue)
+			if err := os.Setenv("TEST_BOOL_VAR", tt.envValue); err != nil {
+				t.Fatalf("Failed to set env var: %v", err)
+			}
 			got := getEnvBool("TEST_BOOL_VAR", tt.defaultValue)
 			if got != tt.want {
 				t.Errorf("getEnvBool() = %v, want %v", got, tt.want)

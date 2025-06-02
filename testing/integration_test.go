@@ -498,7 +498,7 @@ func TestNotifications(t *testing.T) {
 		})).
 		Build()
 
-	defer srv.Stop()
+	defer func() { _ = srv.Stop() }()
 
 	testutil.StartServerWithInit(t, srv, "notification-client", "1.0.0")
 
@@ -558,7 +558,7 @@ func TestLargePayloads(t *testing.T) {
 		})).
 		Build()
 
-	defer srv.Stop()
+	defer func() { _ = srv.Stop() }()
 
 	testutil.StartServerWithInit(t, srv, "large-payload-client", "1.0.0")
 

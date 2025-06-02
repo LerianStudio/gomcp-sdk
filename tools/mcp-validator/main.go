@@ -55,7 +55,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error creating validator: %v\n", err)
 		os.Exit(1)
 	}
-	defer validator.Close()
+	defer func() { _ = validator.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 	defer cancel()

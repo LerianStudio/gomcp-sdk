@@ -155,7 +155,10 @@ func (s *ContractTestSuite) SetupWebSocket() {
 	// Store cleanup function
 	s.wsCleanup = func() {
 		cancel()
-		wsTransport.Stop()
+		if err := wsTransport.Stop(); err != nil {
+			// Log error but don't fail cleanup
+			print("Warning: failed to stop websocket transport:", err.Error())
+		}
 	}
 }
 
@@ -187,7 +190,7 @@ func (s *ContractTestSuite) testListTools(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get tools: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -236,7 +239,7 @@ func (s *ContractTestSuite) testExecuteTool(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to execute echo tool: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -269,7 +272,7 @@ func (s *ContractTestSuite) testExecuteTool(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to execute calculator tool: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -281,7 +284,7 @@ func (s *ContractTestSuite) testGetInfo(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get info: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -306,7 +309,7 @@ func (s *ContractTestSuite) testGetHealth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get health: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
@@ -333,7 +336,7 @@ func (s *ContractTestSuite) testErrorResponseFormat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to make request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("Expected status 404, got %d", resp.StatusCode)
@@ -370,7 +373,7 @@ func (s *ContractTestSuite) testCorrelationID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to make request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Check if correlation ID is echoed back
 	if correlationID := resp.Header.Get("X-Correlation-ID"); correlationID == "" {
@@ -413,10 +416,12 @@ func (s *ContractTestSuite) testValidRequestID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to make JSON-RPC request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
 
 	if result["id"] != "test-123" {
 		t.Error("Response should preserve request ID")
@@ -436,10 +441,12 @@ func (s *ContractTestSuite) testErrorCodeCompliance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to make JSON-RPC request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
 
 	if errorObj, ok := result["error"].(map[string]interface{}); ok {
 		if code, ok := errorObj["code"].(float64); !ok || code != -32601 {
@@ -462,10 +469,12 @@ func (s *ContractTestSuite) testProtocolVersion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to make JSON-RPC request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
 
 	if result["jsonrpc"] != "2.0" {
 		t.Error("Response should include jsonrpc version 2.0")
@@ -480,7 +489,7 @@ func (s *ContractTestSuite) testWebSocketConnection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect to WebSocket: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Test connection is established
 	if conn == nil {
@@ -494,7 +503,7 @@ func (s *ContractTestSuite) testJSONRPCOverWebSocket(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect to WebSocket: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Send JSON-RPC request
 	request := map[string]interface{}{
@@ -533,7 +542,7 @@ func (s *ContractTestSuite) testToolExecutionViaWebSocket(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect to WebSocket: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Test echo tool
 	request := map[string]interface{}{
@@ -595,7 +604,7 @@ func (s *ContractTestSuite) testWebSocketErrorHandling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect to WebSocket: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Send invalid JSON-RPC request
 	request := map[string]interface{}{
@@ -644,7 +653,7 @@ func (s *ContractTestSuite) testWebSocketPingPong(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect to WebSocket: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Set up pong handler
 	pongReceived := make(chan bool, 1)

@@ -246,7 +246,9 @@ func (m *Manager) handleEvent(event Event) {
 
 			// Call handler if registered
 			if handler, exists := m.handlers[method]; exists {
-				go handler(m.ctx, event)
+				go func() {
+					_ = handler(m.ctx, event)
+				}()
 			}
 		}
 	}

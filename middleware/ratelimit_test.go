@@ -485,7 +485,7 @@ func BenchmarkRateLimitMiddleware(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		middleware.Process(ctx, "request", handler)
+		_, _ = middleware.Process(ctx, "request", handler)
 	}
 }
 
@@ -505,7 +505,7 @@ func BenchmarkConcurrentRateLimiting(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		ctx := context.WithValue(context.Background(), ContextKeyUser, &User{ID: "user1"})
 		for pb.Next() {
-			middleware.Process(ctx, "request", handler)
+			_, _ = middleware.Process(ctx, "request", handler)
 		}
 	})
 }

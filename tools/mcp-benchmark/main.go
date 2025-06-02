@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"sort"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -103,7 +104,7 @@ func (b *Benchmark) Run() error {
 		if err != nil {
 			return fmt.Errorf("create worker %d: %w", i, err)
 		}
-		defer worker.Close()
+		defer func(w *Worker) { _ = w.Close() }(worker)
 
 		// Initialize worker
 		if err := worker.Initialize(); err != nil {
@@ -240,7 +241,7 @@ func (b *Benchmark) runWorker(ctx context.Context, w *Worker) {
 		// Send request
 		req := protocol.JSONRPCRequest{
 			JSONRPC: "2.0",
-			ID:      json.RawMessage(fmt.Sprintf(`%d`, requestID)),
+			ID:      json.RawMessage("`" + strconv.Itoa(int(requestID)) + "`"),
 			Method:  b.requestType,
 		}
 

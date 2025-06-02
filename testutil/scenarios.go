@@ -70,7 +70,7 @@ func (r *ScenarioRunner) runScenario(t *testing.T, scenario Scenario) {
 	if err := server.Start(); err != nil {
 		t.Fatalf("Failed to start server: %v", err)
 	}
-	defer server.Stop()
+	defer func() { _ = server.Stop() }()
 
 	// Initialize
 	ctx := context.Background()
