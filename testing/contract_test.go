@@ -1,5 +1,5 @@
 // Package testing provides contract testing functionality for MCP
-package testing
+package mcp_test
 
 import (
 	"bytes"

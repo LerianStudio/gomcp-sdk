@@ -1,4 +1,4 @@
-package mcp
+package mcp_test
 
 import (
 	"encoding/json"
