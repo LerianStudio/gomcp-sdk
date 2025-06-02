@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"os"
 	"os/exec"
@@ -348,11 +349,17 @@ func (b *Benchmark) printResults(elapsed time.Duration) {
 
 func (w *Worker) Close() error {
 	if w.stdin != nil {
-		w.stdin.Close()
+		if err := w.stdin.Close(); err != nil {
+			log.Printf("Error closing stdin: %v", err)
+		}
 	}
 	if w.cmd != nil {
-		w.cmd.Process.Kill()
-		w.cmd.Wait()
+		if err := w.cmd.Process.Kill(); err != nil {
+			log.Printf("Error killing process: %v", err)
+		}
+		if err := w.cmd.Wait(); err != nil {
+			log.Printf("Error waiting for process: %v", err)
+		}
 	}
 	return nil
 }

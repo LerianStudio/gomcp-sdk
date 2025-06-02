@@ -9,9 +9,11 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/LerianStudio/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/shutdown"
 )
 
 // SSEConfig contains configuration for Server-Sent Events transport
@@ -46,6 +48,11 @@ type SSETransport struct {
 
 	// Event broadcasting
 	broadcast chan *sseEvent
+
+	// Graceful shutdown support
+	connectionTracker *shutdown.ConnectionTracker
+	shutdownConfig    *shutdown.ShutdownConfig
+	activeRequests    int64
 }
 
 // sseClient represents a connected SSE client
@@ -89,10 +96,12 @@ func NewSSETransport(config *SSEConfig) *SSETransport {
 	httpTransport := NewHTTPTransport(&config.HTTPConfig)
 
 	return &SSETransport{
-		HTTPTransport: httpTransport,
-		sseConfig:     config,
-		clients:       make(map[string]*sseClient),
-		broadcast:     make(chan *sseEvent, 1000),
+		HTTPTransport:     httpTransport,
+		sseConfig:         config,
+		clients:           make(map[string]*sseClient),
+		broadcast:         make(chan *sseEvent, 1000),
+		connectionTracker: shutdown.NewConnectionTracker(),
+		shutdownConfig:    shutdown.DefaultShutdownConfig(),
 	}
 }
 
@@ -168,8 +177,13 @@ func (t *SSETransport) Start(ctx context.Context, handler RequestHandler) error 
 	return nil
 }
 
-// Stop stops the SSE transport
+// Stop stops the SSE transport gracefully
 func (t *SSETransport) Stop() error {
+	return t.GracefulShutdown(context.Background())
+}
+
+// ForceStop forces immediate shutdown of the SSE transport
+func (t *SSETransport) ForceStop() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -179,10 +193,10 @@ func (t *SSETransport) Stop() error {
 
 	t.running = false
 
-	// Close broadcast channel
+	// Close broadcast channel immediately
 	close(t.broadcast)
 
-	// Disconnect all clients
+	// Disconnect all clients immediately
 	t.clientMu.Lock()
 	for _, client := range t.clients {
 		close(client.done)
@@ -190,23 +204,224 @@ func (t *SSETransport) Stop() error {
 	t.clients = make(map[string]*sseClient)
 	t.clientMu.Unlock()
 
-	// Close listener first
+	// Close listener immediately
 	if t.listener != nil {
 		_ = t.listener.Close()
 	}
 
-	// Stop HTTP server
+	// Close server without graceful shutdown
 	if t.server != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		return t.server.Shutdown(ctx)
+		return t.server.Close()
 	}
 
 	return nil
 }
 
+// IsRunning returns whether the transport is running
+func (t *SSETransport) IsRunning() bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.running
+}
+
+// ConnectionCount returns the number of active connections
+func (t *SSETransport) ConnectionCount() int {
+	t.clientMu.RLock()
+	clientCount := len(t.clients)
+	t.clientMu.RUnlock()
+
+	return clientCount + t.connectionTracker.Count() + int(atomic.LoadInt64(&t.activeRequests))
+}
+
+// GracefulShutdown performs graceful shutdown with connection draining
+func (t *SSETransport) GracefulShutdown(ctx context.Context) error {
+	t.mu.Lock()
+	if !t.running {
+		t.mu.Unlock()
+		return nil
+	}
+	t.running = false
+	t.mu.Unlock()
+
+	fmt.Println("🛑 SSE Transport: Initiating graceful shutdown...")
+
+	// Create shutdown context with timeout
+	shutdownCtx, cancel := context.WithTimeout(ctx, t.shutdownConfig.Timeout)
+	defer cancel()
+
+	// Phase 1: Stop accepting new connections
+	fmt.Println("🚫 SSE Transport: Stopping new connections...")
+	if t.listener != nil {
+		if err := t.listener.Close(); err != nil {
+			fmt.Printf("Error closing SSE listener: %v\n", err)
+		}
+	}
+
+	// Phase 2: Wait for active requests to complete
+	if t.shutdownConfig.GracePeriod > 0 {
+		fmt.Printf("⏳ SSE Transport: Grace period (%v) for active requests...\n", t.shutdownConfig.GracePeriod)
+
+		gracePeriodCtx, graceCancel := context.WithTimeout(shutdownCtx, t.shutdownConfig.GracePeriod)
+		t.waitForActiveRequests(gracePeriodCtx)
+		graceCancel()
+	}
+
+	// Phase 3: Send disconnect events to SSE clients
+	fmt.Println("📤 SSE Transport: Sending disconnect events to clients...")
+	t.sendDisconnectEvents()
+
+	// Phase 4: Drain connections
+	if t.shutdownConfig.DrainConnections {
+		fmt.Printf("🔄 SSE Transport: Draining connections (timeout: %v)...\n", t.shutdownConfig.DrainTimeout)
+
+		drainCtx, drainCancel := context.WithTimeout(shutdownCtx, t.shutdownConfig.DrainTimeout)
+		t.drainConnections(drainCtx)
+		drainCancel()
+	}
+
+	// Phase 5: Close broadcast channel and remaining clients
+	fmt.Println("📤 SSE Transport: Closing broadcast and client channels...")
+	close(t.broadcast)
+
+	t.clientMu.Lock()
+	for _, client := range t.clients {
+		close(client.done)
+	}
+	t.clients = make(map[string]*sseClient)
+	t.clientMu.Unlock()
+
+	// Phase 6: Shutdown server
+	fmt.Println("🔌 SSE Transport: Shutting down server...")
+	if t.server != nil {
+		err := t.server.Shutdown(shutdownCtx)
+		if err != nil {
+			fmt.Printf("❌ SSE Transport: Server shutdown error: %v\n", err)
+			return err
+		}
+	}
+
+	fmt.Println("✅ SSE Transport: Graceful shutdown completed")
+	return nil
+}
+
+// waitForActiveRequests waits for active requests to complete
+func (t *SSETransport) waitForActiveRequests(ctx context.Context) {
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			activeReqs := atomic.LoadInt64(&t.activeRequests)
+			if activeReqs > 0 {
+				fmt.Printf("⏰ SSE Transport: Grace period timeout with %d active requests\n", activeReqs)
+			}
+			return
+		case <-ticker.C:
+			activeReqs := atomic.LoadInt64(&t.activeRequests)
+			if activeReqs == 0 {
+				fmt.Println("✅ SSE Transport: All active requests completed")
+				return
+			}
+			fmt.Printf("⏳ SSE Transport: Waiting for %d active requests...\n", activeReqs)
+		}
+	}
+}
+
+// sendDisconnectEvents sends disconnect events to all SSE clients
+func (t *SSETransport) sendDisconnectEvents() {
+	t.clientMu.RLock()
+	clients := make([]*sseClient, 0, len(t.clients))
+	for _, client := range t.clients {
+		clients = append(clients, client)
+	}
+	t.clientMu.RUnlock()
+
+	// Send disconnect events concurrently
+	var wg sync.WaitGroup
+	for _, client := range clients {
+		wg.Add(1)
+		go func(c *sseClient) {
+			defer wg.Done()
+
+			// Send disconnect event with 5 second timeout
+			disconnectEvent := &sseEvent{
+				Type: "disconnect",
+				Data: map[string]interface{}{
+					"reason": "Server shutting down",
+					"retry":  int(t.sseConfig.RetryDelay / time.Millisecond),
+				},
+			}
+
+			// Try to send disconnect event
+			select {
+			case c.events <- disconnectEvent:
+				// Event queued, give it a moment to be sent
+				time.Sleep(100 * time.Millisecond)
+			case <-time.After(1 * time.Second):
+				// Timeout, continue
+			}
+		}(client)
+	}
+
+	// Wait for all disconnect events to be sent with timeout
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		fmt.Println("📤 SSE Transport: Disconnect events sent to all clients")
+	case <-time.After(3 * time.Second):
+		fmt.Println("⏰ SSE Transport: Timeout sending disconnect events")
+	}
+}
+
+// drainConnections drains existing connections
+func (t *SSETransport) drainConnections(ctx context.Context) {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			t.clientMu.RLock()
+			clientCount := len(t.clients)
+			t.clientMu.RUnlock()
+
+			if clientCount > 0 {
+				fmt.Printf("⏰ SSE Transport: Connection draining timeout with %d clients\n", clientCount)
+				// Force close remaining clients
+				t.clientMu.Lock()
+				for _, client := range t.clients {
+					close(client.done)
+				}
+				t.clients = make(map[string]*sseClient)
+				t.clientMu.Unlock()
+			}
+			return
+		case <-ticker.C:
+			t.clientMu.RLock()
+			clientCount := len(t.clients)
+			t.clientMu.RUnlock()
+
+			if clientCount == 0 {
+				fmt.Println("✅ SSE Transport: All connections drained")
+				return
+			}
+			fmt.Printf("🔄 SSE Transport: Draining %d remaining connections...\n", clientCount)
+		}
+	}
+}
+
 // handleSSE handles SSE connections
 func (t *SSETransport) handleSSE(w http.ResponseWriter, r *http.Request) {
+	// Track active request
+	atomic.AddInt64(&t.activeRequests, 1)
+	defer atomic.AddInt64(&t.activeRequests, -1)
+
 	// Check if client supports SSE
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -309,6 +524,10 @@ func (t *SSETransport) handleClient(client *sseClient, ctx context.Context) {
 
 // handleCommand handles command requests via regular HTTP POST
 func (t *SSETransport) handleCommand(w http.ResponseWriter, r *http.Request) {
+	// Track active request
+	atomic.AddInt64(&t.activeRequests, 1)
+	defer atomic.AddInt64(&t.activeRequests, -1)
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return

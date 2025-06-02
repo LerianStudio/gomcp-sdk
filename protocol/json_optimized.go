@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"io"
 	"sync"
-	"unsafe"
 )
 
 // OptimizedJSONCodec provides high-performance JSON encoding/decoding
@@ -353,16 +352,16 @@ func hexDigit(n byte) byte {
 // GlobalOptimizedCodec provides a global instance of the optimized codec
 var GlobalOptimizedCodec = NewOptimizedJSONCodec()
 
-// UnsafeString converts bytes to string without allocation
-// WARNING: The byte slice MUST NOT be modified after this call
-func UnsafeString(b []byte) string {
-	return *(*string)(unsafe.Pointer(&b))
+// SafeString converts bytes to string safely
+// This creates a copy to ensure memory safety
+func SafeString(b []byte) string {
+	return string(b)
 }
 
-// UnsafeBytes converts string to bytes without allocation
-// WARNING: The returned byte slice MUST NOT be modified
-func UnsafeBytes(s string) []byte {
-	return *(*[]byte)(unsafe.Pointer(&s))
+// SafeBytes converts string to bytes safely
+// This creates a copy to ensure memory safety
+func SafeBytes(s string) []byte {
+	return []byte(s)
 }
 
 // StreamingDecoder provides streaming JSON decoding for large responses

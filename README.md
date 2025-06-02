@@ -25,7 +25,7 @@ A comprehensive, production-ready Go implementation of the [Model Context Protoc
 ## 📦 Installation
 
 ```bash
-go get github.com/yourusername/mcp-go
+go get github.com/LerianStudio/gomcp-sdk
 ```
 
 ### Requirements
@@ -43,9 +43,9 @@ import (
     "context"
     "log"
     
-    mcp "github.com/yourusername/mcp-go"
-    "github.com/yourusername/mcp-go/server"
-    "github.com/yourusername/mcp-go/transport"
+    mcp "github.com/LerianStudio/gomcp-sdk"
+    "github.com/LerianStudio/gomcp-sdk/server"
+    "github.com/LerianStudio/gomcp-sdk/transport"
 )
 
 func main() {
@@ -90,10 +90,10 @@ import (
     "context"
     "log"
     
-    "github.com/yourusername/mcp-go/server"
-    "github.com/yourusername/mcp-go/transport"
-    "github.com/yourusername/mcp-go/sampling"
-    "github.com/yourusername/mcp-go/roots"
+    "github.com/LerianStudio/gomcp-sdk/server"
+    "github.com/LerianStudio/gomcp-sdk/transport"
+    "github.com/LerianStudio/gomcp-sdk/sampling"
+    "github.com/LerianStudio/gomcp-sdk/roots"
 )
 
 func main() {
@@ -284,7 +284,7 @@ mcp-go/
 
 ## 📚 Documentation
 
-- [API Reference](https://pkg.go.dev/github.com/yourusername/mcp-go)
+- [API Reference](https://pkg.go.dev/github.com/LerianStudio/gomcp-sdk)
 - [Protocol Specification](https://modelcontextprotocol.io)
 - [Examples](./examples)
 - [Contributing Guide](./CONTRIBUTING.md)

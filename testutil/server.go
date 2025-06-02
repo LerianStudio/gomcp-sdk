@@ -3,11 +3,13 @@ package testutil
 import (
 	"context"
 	"fmt"
+	"log"
+	"sync"
+	"time"
+
 	"github.com/LerianStudio/gomcp-sdk/protocol"
 	"github.com/LerianStudio/gomcp-sdk/server"
 	"github.com/LerianStudio/gomcp-sdk/transport"
-	"sync"
-	"time"
 )
 
 // TestServer wraps an MCP server for testing
@@ -59,7 +61,9 @@ func (ts *TestServer) Start() error {
 	go func() {
 		defer ts.wg.Done()
 		close(ts.started)
-		ts.Server.Start(ts.ctx)
+		if err := ts.Server.Start(ts.ctx); err != nil {
+			log.Printf("Error starting test server: %v", err)
+		}
 	}()
 
 	// Wait for server to actually start
@@ -236,7 +240,9 @@ func (b *ServerBuilder) Build() *TestServer {
 	if b.initialized && b.clientName != "" {
 		go func() {
 			time.Sleep(20 * time.Millisecond) // Give server time to start
-			b.server.Client().Initialize(context.Background(), b.clientName, b.clientVersion)
+			if _, err := b.server.Client().Initialize(context.Background(), b.clientName, b.clientVersion); err != nil {
+				log.Printf("Error initializing client: %v", err)
+			}
 		}()
 	}
 

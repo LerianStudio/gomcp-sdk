@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -480,11 +481,17 @@ func (v *Validator) testListPrompts(ctx context.Context, verbose bool) TestResul
 
 func (v *Validator) Close() error {
 	if v.stdin != nil {
-		v.stdin.Close()
+		if err := v.stdin.Close(); err != nil {
+			log.Printf("Error closing stdin: %v", err)
+		}
 	}
 	if v.cmd != nil {
-		v.cmd.Process.Kill()
-		v.cmd.Wait()
+		if err := v.cmd.Process.Kill(); err != nil {
+			log.Printf("Error killing process: %v", err)
+		}
+		if err := v.cmd.Wait(); err != nil {
+			log.Printf("Error waiting for process: %v", err)
+		}
 	}
 	return nil
 }

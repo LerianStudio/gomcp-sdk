@@ -9,9 +9,16 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/LerianStudio/gomcp-sdk/correlation"
+	"github.com/LerianStudio/gomcp-sdk/middleware"
 	"github.com/LerianStudio/gomcp-sdk/protocol"
+	"github.com/LerianStudio/gomcp-sdk/shutdown"
 	"github.com/gorilla/websocket"
 )
 
@@ -45,23 +52,33 @@ type WebSocketConfig struct {
 
 	// Path to handle WebSocket connections (default: "/ws")
 	Path string
+
+	// Tracing configuration
+	TracingConfig *middleware.TracingConfig
+
+	// Enable correlation ID propagation
+	EnableCorrelation bool
 }
 
 // WebSocketTransport implements WebSocket transport for MCP
 type WebSocketTransport struct {
-	config   *WebSocketConfig
-	server   *http.Server
-	listener net.Listener
-	upgrader *websocket.Upgrader
-	handler  RequestHandler
-	mu       sync.RWMutex
-	running  bool
-	certFile string
-	keyFile  string
+	config            *WebSocketConfig
+	server            *http.Server
+	listener          net.Listener
+	upgrader          *websocket.Upgrader
+	handler           RequestHandler
+	mu                sync.RWMutex
+	running           bool
+	certFile          string
+	keyFile           string
+	connectionTracker *shutdown.ConnectionTracker
+	shutdownConfig    *shutdown.ShutdownConfig
+	activeRequests    int64
 
 	// Active connections
-	connections map[*websocket.Conn]bool
-	connMu      sync.RWMutex
+	connections       map[*websocket.Conn]bool
+	connMu            sync.RWMutex
+	tracingMiddleware *middleware.TracingMiddleware
 }
 
 // NewWebSocketTransport creates a new WebSocket transport
@@ -106,11 +123,20 @@ func NewWebSocketTransport(config *WebSocketConfig) *WebSocketTransport {
 		CheckOrigin:       config.CheckOrigin,
 	}
 
-	return &WebSocketTransport{
-		config:      config,
-		upgrader:    upgrader,
-		connections: make(map[*websocket.Conn]bool),
+	transport := &WebSocketTransport{
+		config:            config,
+		upgrader:          upgrader,
+		connections:       make(map[*websocket.Conn]bool),
+		connectionTracker: shutdown.NewConnectionTracker(),
+		shutdownConfig:    shutdown.DefaultShutdownConfig(),
 	}
+
+	// Initialize tracing middleware if enabled
+	if config.TracingConfig != nil {
+		transport.tracingMiddleware = middleware.NewTracingMiddleware(*config.TracingConfig)
+	}
+
+	return transport
 }
 
 // NewSecureWebSocketTransport creates a new secure WebSocket transport
@@ -133,7 +159,21 @@ func (t *WebSocketTransport) Start(ctx context.Context, handler RequestHandler) 
 	t.handler = handler
 
 	mux := http.NewServeMux()
-	mux.HandleFunc(t.config.Path, t.handleWebSocket)
+
+	// Wrap WebSocket handler with middleware
+	var wsHandler http.Handler = http.HandlerFunc(t.handleWebSocket)
+
+	// Correlation middleware (innermost)
+	if t.config.EnableCorrelation {
+		wsHandler = correlation.CorrelationMiddleware()(wsHandler)
+	}
+
+	// Tracing middleware
+	if t.tracingMiddleware != nil {
+		wsHandler = t.tracingMiddleware.WebSocketMiddleware()(wsHandler)
+	}
+
+	mux.Handle(t.config.Path, wsHandler)
 
 	// Create listener first to get the actual port
 	listener, err := net.Listen("tcp", t.config.Address)
@@ -177,8 +217,13 @@ func (t *WebSocketTransport) Start(ctx context.Context, handler RequestHandler) 
 	return nil
 }
 
-// Stop stops the WebSocket transport
+// Stop stops the WebSocket transport gracefully
 func (t *WebSocketTransport) Stop() error {
+	return t.GracefulShutdown(context.Background())
+}
+
+// ForceStop forces immediate shutdown of the WebSocket transport
+func (t *WebSocketTransport) ForceStop() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -188,7 +233,7 @@ func (t *WebSocketTransport) Stop() error {
 
 	t.running = false
 
-	// Close all active connections
+	// Close all active connections immediately
 	t.connMu.Lock()
 	for conn := range t.connections {
 		_ = conn.Close()
@@ -196,17 +241,199 @@ func (t *WebSocketTransport) Stop() error {
 	t.connections = make(map[*websocket.Conn]bool)
 	t.connMu.Unlock()
 
+	// Close listener immediately
+	if t.listener != nil {
+		_ = t.listener.Close()
+	}
+
+	// Close server without graceful shutdown
 	if t.server != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		err := t.server.Shutdown(ctx)
-		if t.listener != nil {
-			_ = t.listener.Close()
-		}
-		return err
+		return t.server.Close()
 	}
 
 	return nil
+}
+
+// IsRunning returns whether the transport is running
+func (t *WebSocketTransport) IsRunning() bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.running
+}
+
+// ConnectionCount returns the number of active connections
+func (t *WebSocketTransport) ConnectionCount() int {
+	t.connMu.RLock()
+	connCount := len(t.connections)
+	t.connMu.RUnlock()
+
+	return connCount
+}
+
+// GracefulShutdown performs graceful shutdown with connection draining
+func (t *WebSocketTransport) GracefulShutdown(ctx context.Context) error {
+	t.mu.Lock()
+	if !t.running {
+		t.mu.Unlock()
+		return nil
+	}
+	t.running = false
+	t.mu.Unlock()
+
+	fmt.Println("🛑 WebSocket Transport: Initiating graceful shutdown...")
+
+	// Create shutdown context with timeout
+	shutdownCtx, cancel := context.WithTimeout(ctx, t.shutdownConfig.Timeout)
+	defer cancel()
+
+	// Phase 1: Stop accepting new connections
+	fmt.Println("🚫 WebSocket Transport: Stopping new connections...")
+	if t.listener != nil {
+		if err := t.listener.Close(); err != nil {
+			fmt.Printf("Error closing WebSocket listener: %v\n", err)
+		}
+	}
+
+	// Phase 2: Wait for active requests to complete
+	if t.shutdownConfig.GracePeriod > 0 {
+		fmt.Printf("⏳ WebSocket Transport: Grace period (%v) for active requests...\n", t.shutdownConfig.GracePeriod)
+
+		gracePeriodCtx, graceCancel := context.WithTimeout(shutdownCtx, t.shutdownConfig.GracePeriod)
+		t.waitForActiveRequests(gracePeriodCtx)
+		graceCancel()
+	}
+
+	// Phase 3: Send close messages to WebSocket connections
+	fmt.Println("📤 WebSocket Transport: Sending close messages to connections...")
+	t.sendCloseMessages()
+
+	// Phase 4: Drain connections with timeout
+	if t.shutdownConfig.DrainConnections {
+		fmt.Printf("🔄 WebSocket Transport: Draining connections (timeout: %v)...\n", t.shutdownConfig.DrainTimeout)
+
+		drainCtx, drainCancel := context.WithTimeout(shutdownCtx, t.shutdownConfig.DrainTimeout)
+		t.drainConnections(drainCtx)
+		drainCancel()
+	}
+
+	// Phase 5: Shutdown server
+	fmt.Println("🔌 WebSocket Transport: Shutting down server...")
+	if t.server != nil {
+		err := t.server.Shutdown(shutdownCtx)
+		if err != nil {
+			fmt.Printf("❌ WebSocket Transport: Server shutdown error: %v\n", err)
+			return err
+		}
+	}
+
+	fmt.Println("✅ WebSocket Transport: Graceful shutdown completed")
+	return nil
+}
+
+// waitForActiveRequests waits for active requests to complete
+func (t *WebSocketTransport) waitForActiveRequests(ctx context.Context) {
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			activeReqs := atomic.LoadInt64(&t.activeRequests)
+			if activeReqs > 0 {
+				fmt.Printf("⏰ WebSocket Transport: Grace period timeout with %d active requests\n", activeReqs)
+			}
+			return
+		case <-ticker.C:
+			activeReqs := atomic.LoadInt64(&t.activeRequests)
+			if activeReqs == 0 {
+				fmt.Println("✅ WebSocket Transport: All active requests completed")
+				return
+			}
+			fmt.Printf("⏳ WebSocket Transport: Waiting for %d active requests...\n", activeReqs)
+		}
+	}
+}
+
+// sendCloseMessages sends close messages to all WebSocket connections
+func (t *WebSocketTransport) sendCloseMessages() {
+	t.connMu.RLock()
+	connections := make([]*websocket.Conn, 0, len(t.connections))
+	for conn := range t.connections {
+		connections = append(connections, conn)
+	}
+	t.connMu.RUnlock()
+
+	// Send close messages concurrently
+	var wg sync.WaitGroup
+	for _, conn := range connections {
+		wg.Add(1)
+		go func(c *websocket.Conn) {
+			defer wg.Done()
+
+			// Send close message with 10 second timeout
+			deadline := time.Now().Add(10 * time.Second)
+			if err := c.SetWriteDeadline(deadline); err != nil {
+				// Connection might be broken, continue with close attempt
+				return
+			}
+
+			closeMessage := websocket.FormatCloseMessage(websocket.CloseGoingAway, "Server shutting down")
+			if err := c.WriteMessage(websocket.CloseMessage, closeMessage); err != nil {
+				// Ignore errors, connection might already be closed
+			}
+		}(conn)
+	}
+
+	// Wait for all close messages to be sent with timeout
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		fmt.Println("📤 WebSocket Transport: Close messages sent to all connections")
+	case <-time.After(5 * time.Second):
+		fmt.Println("⏰ WebSocket Transport: Timeout sending close messages")
+	}
+}
+
+// drainConnections drains existing connections
+func (t *WebSocketTransport) drainConnections(ctx context.Context) {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			t.connMu.RLock()
+			connCount := len(t.connections)
+			t.connMu.RUnlock()
+
+			if connCount > 0 {
+				fmt.Printf("⏰ WebSocket Transport: Connection draining timeout with %d connections\n", connCount)
+				// Force close remaining connections
+				t.connMu.Lock()
+				for conn := range t.connections {
+					_ = conn.Close()
+				}
+				t.connections = make(map[*websocket.Conn]bool)
+				t.connMu.Unlock()
+			}
+			return
+		case <-ticker.C:
+			t.connMu.RLock()
+			connCount := len(t.connections)
+			t.connMu.RUnlock()
+
+			if connCount == 0 {
+				fmt.Println("✅ WebSocket Transport: All connections drained")
+				return
+			}
+			fmt.Printf("🔄 WebSocket Transport: Draining %d remaining connections...\n", connCount)
+		}
+	}
 }
 
 // handleWebSocket handles WebSocket upgrade and connection
@@ -216,18 +443,28 @@ func (t *WebSocketTransport) handleWebSocket(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Track connection
+	connID := t.connectionTracker.AddConnection("websocket", r.RemoteAddr)
+
 	// Register connection
 	t.connMu.Lock()
 	t.connections[conn] = true
 	t.connMu.Unlock()
 
-	// Handle connection
-	go t.handleConnection(conn)
+	// Handle connection with context
+	go t.handleConnection(conn, connID, r.Context())
 }
 
 // handleConnection handles a WebSocket connection
-func (t *WebSocketTransport) handleConnection(conn *websocket.Conn) {
+func (t *WebSocketTransport) handleConnection(conn *websocket.Conn, connID string, baseCtx context.Context) {
+	// Track active request
+	atomic.AddInt64(&t.activeRequests, 1)
+	defer atomic.AddInt64(&t.activeRequests, -1)
+
 	defer func() {
+		// Remove connection tracking
+		t.connectionTracker.RemoveConnection(connID)
+
 		// Unregister connection
 		t.connMu.Lock()
 		delete(t.connections, conn)
@@ -276,12 +513,41 @@ func (t *WebSocketTransport) handleConnection(conn *websocket.Conn) {
 
 			// Handle requests normally
 			if parsed.Request != nil {
-				ctx := context.Background()
-				resp := t.handler.HandleRequest(ctx, parsed.Request)
+				// Create context for this request, inheriting correlation data
+				ctx := correlation.CreateChildContext(baseCtx)
 
-				// Send response
-				if err := t.sendResponse(conn, resp); err != nil {
-					return
+				// Add tracing for WebSocket JSON-RPC requests
+				if t.tracingMiddleware != nil {
+					var span trace.Span
+					ctx, span = t.tracingMiddleware.TraceJSONRPCRequest(ctx, parsed.Request)
+					// Also trace the WebSocket message
+					ctx, msgSpan := t.tracingMiddleware.TraceWebSocketMessage(ctx, "request", connID)
+
+					// Handle the request
+					resp := t.handler.HandleRequest(ctx, parsed.Request)
+
+					// Set span status based on response
+					if resp.Error != nil {
+						span.SetStatus(codes.Error, resp.Error.Message)
+						msgSpan.SetStatus(codes.Error, resp.Error.Message)
+					} else {
+						span.SetStatus(codes.Ok, "")
+						msgSpan.SetStatus(codes.Ok, "")
+					}
+
+					span.End()
+					msgSpan.End()
+
+					// Send response
+					if err := t.sendResponse(conn, resp); err != nil {
+						return
+					}
+				} else {
+					// Handle without tracing
+					resp := t.handler.HandleRequest(ctx, parsed.Request)
+					if err := t.sendResponse(conn, resp); err != nil {
+						return
+					}
 				}
 			} else if parsed.Response != nil && parsed.IsError {
 				// Claude Desktop sent an error response - continue gracefully
@@ -348,13 +614,6 @@ func (t *WebSocketTransport) Broadcast(message interface{}) error {
 	return nil
 }
 
-// IsRunning returns whether the transport is running
-func (t *WebSocketTransport) IsRunning() bool {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
-	return t.running
-}
-
 // Address returns the actual listening address
 func (t *WebSocketTransport) Address() string {
 	t.mu.RLock()
@@ -363,11 +622,4 @@ func (t *WebSocketTransport) Address() string {
 		return t.listener.Addr().String()
 	}
 	return t.config.Address
-}
-
-// ConnectionCount returns the number of active connections
-func (t *WebSocketTransport) ConnectionCount() int {
-	t.connMu.RLock()
-	defer t.connMu.RUnlock()
-	return len(t.connections)
 }

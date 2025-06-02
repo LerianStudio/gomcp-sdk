@@ -3,6 +3,7 @@ package protocol
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"reflect"
 )
 
@@ -144,6 +145,10 @@ func convertToInt64(value interface{}) (int64, bool) {
 	case int64:
 		return v, true
 	case uint:
+		// Check for overflow before conversion
+		if v > math.MaxInt64 {
+			return 0, false
+		}
 		return int64(v), true
 	case uint8:
 		return int64(v), true
@@ -152,6 +157,10 @@ func convertToInt64(value interface{}) (int64, bool) {
 	case uint32:
 		return int64(v), true
 	case uint64:
+		// Check for overflow before conversion
+		if v > math.MaxInt64 {
+			return 0, false
+		}
 		return int64(v), true
 	case float32:
 		return int64(v), true

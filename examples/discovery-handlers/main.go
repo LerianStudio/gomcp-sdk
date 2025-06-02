@@ -59,7 +59,10 @@ func main() {
 func createExamplePlugins(pluginDir string) {
 	// Create math plugin
 	mathDir := filepath.Join(pluginDir, "math-plugin")
-	os.MkdirAll(mathDir, 0755)
+	if err := os.MkdirAll(mathDir, 0750); err != nil {
+		log.Printf("Failed to create math plugin directory: %v", err)
+		return
+	}
 
 	mathManifest := discovery.PluginManifest{
 		Name:        "Math Plugin",
@@ -92,18 +95,27 @@ func createExamplePlugins(pluginDir string) {
 	}
 
 	data, _ := json.MarshalIndent(mathManifest, "", "  ")
-	os.WriteFile(filepath.Join(mathDir, "mcp-manifest.json"), data, 0644)
+	if err := os.WriteFile(filepath.Join(mathDir, "mcp-manifest.json"), data, 0600); err != nil {
+		log.Printf("Failed to write math manifest: %v", err)
+		return
+	}
 
 	// Create handler config for embedded handler
 	handlerConfig := discovery.HandlerConfig{
 		Type: discovery.HandlerTypeEmbedded,
 	}
 	configData, _ := json.MarshalIndent(handlerConfig, "", "  ")
-	os.WriteFile(filepath.Join(mathDir, "handler.json"), configData, 0644)
+	if err := os.WriteFile(filepath.Join(mathDir, "handler.json"), configData, 0600); err != nil {
+		log.Printf("Failed to write math handler config: %v", err)
+		return
+	}
 
 	// Create utility plugin
 	utilDir := filepath.Join(pluginDir, "util-plugin")
-	os.MkdirAll(utilDir, 0755)
+	if err := os.MkdirAll(utilDir, 0750); err != nil {
+		log.Printf("Failed to create util plugin directory: %v", err)
+		return
+	}
 
 	utilManifest := discovery.PluginManifest{
 		Name:        "Utility Plugin",
@@ -141,7 +153,10 @@ func createExamplePlugins(pluginDir string) {
 	}
 
 	data, _ = json.MarshalIndent(utilManifest, "", "  ")
-	os.WriteFile(filepath.Join(utilDir, "mcp-manifest.json"), data, 0644)
+	if err := os.WriteFile(filepath.Join(utilDir, "mcp-manifest.json"), data, 0600); err != nil {
+		log.Printf("Failed to write util manifest: %v", err)
+		return
+	}
 }
 
 func testHandlers(registry *discovery.Registry) {

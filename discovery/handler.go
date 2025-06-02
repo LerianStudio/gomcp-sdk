@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -193,7 +194,13 @@ func (l *HandlerLoader) loadSubprocessHandler(tool protocol.Tool, config *Handle
 		return nil, fmt.Errorf("security validation failed: %w", err)
 	}
 
+	// Security: Additional validation before command execution
+	if err := validateCommandSecurity(config.Command, config.Args); err != nil {
+		return nil, fmt.Errorf("command security validation failed: %w", err)
+	}
+
 	// Prepare command with security constraints
+	// #nosec G204 - Command and arguments are validated by validateSubprocessConfig and validateCommandSecurity
 	cmd := exec.Command(config.Command, config.Args...)
 
 	// Security: Set minimal, controlled environment
@@ -329,16 +336,33 @@ func RegisterEmbeddedHandler(name string, handler protocol.ToolHandler) {
 
 // LoadHandlerFromManifest loads a handler based on manifest configuration
 func (l *HandlerLoader) LoadHandlerFromManifest(manifestPath string, tool protocol.Tool, source string) error {
+	// Security: Validate manifest path
+	cleanManifestPath := filepath.Clean(manifestPath)
+	if strings.Contains(cleanManifestPath, "..") {
+		return fmt.Errorf("invalid manifest path with traversal: %s", manifestPath)
+	}
+
 	// Look for handler configuration file
-	handlerConfigPath := filepath.Join(filepath.Dir(manifestPath), fmt.Sprintf("%s.handler.json", tool.Name))
+	handlerConfigPath := filepath.Join(filepath.Dir(cleanManifestPath), fmt.Sprintf("%s.handler.json", tool.Name))
 
 	// If no specific handler config, try common handler config
 	if _, err := os.Stat(handlerConfigPath); os.IsNotExist(err) {
-		handlerConfigPath = filepath.Join(filepath.Dir(manifestPath), "handler.json")
+		handlerConfigPath = filepath.Join(filepath.Dir(cleanManifestPath), "handler.json")
+	}
+
+	// Security: Validate handler config path
+	cleanConfigPath := filepath.Clean(handlerConfigPath)
+	if strings.Contains(cleanConfigPath, "..") {
+		return fmt.Errorf("invalid config path with traversal: %s", handlerConfigPath)
+	}
+
+	// Only allow .json files
+	if !strings.HasSuffix(cleanConfigPath, ".json") {
+		return fmt.Errorf("invalid config file extension: %s", handlerConfigPath)
 	}
 
 	// Load handler configuration
-	data, err := os.ReadFile(handlerConfigPath)
+	data, err := os.ReadFile(cleanConfigPath)
 	if err != nil {
 		// If no config file, try to use embedded handler
 		return l.LoadHandler(tool, &HandlerConfig{Type: HandlerTypeEmbedded}, source)
@@ -378,6 +402,34 @@ func validateSubprocessConfig(config *HandlerConfig) error {
 	for _, arg := range config.Args {
 		if containsDangerousPatterns(arg) {
 			return fmt.Errorf("argument contains dangerous patterns: %s", arg)
+		}
+	}
+
+	return nil
+}
+
+// validateCommandSecurity performs additional security validation on commands
+func validateCommandSecurity(command string, args []string) error {
+	// Check if command path exists and is executable
+	if _, err := os.Stat(command); os.IsNotExist(err) {
+		return fmt.Errorf("command does not exist: %s", command)
+	}
+
+	// Additional argument validation beyond containsDangerousPatterns
+	for _, arg := range args {
+		// Check for path traversal in arguments
+		if strings.Contains(arg, "..") || strings.Contains(arg, "/.") {
+			return fmt.Errorf("argument contains path traversal: %s", arg)
+		}
+
+		// Check for null bytes
+		if strings.Contains(arg, "\x00") {
+			return fmt.Errorf("argument contains null byte: %s", arg)
+		}
+
+		// Limit argument length to prevent buffer overflow
+		if len(arg) > 4096 {
+			return fmt.Errorf("argument too long: %d bytes", len(arg))
 		}
 	}
 

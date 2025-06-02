@@ -7,22 +7,69 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/LerianStudio/gomcp-sdk/correlation"
 	"github.com/LerianStudio/gomcp-sdk/protocol"
 	"github.com/LerianStudio/gomcp-sdk/transport"
 )
 
+// LifecyclePhase represents different phases of server lifecycle
+type LifecyclePhase int
+
+const (
+	PhaseInitializing LifecyclePhase = iota
+	PhaseStarting
+	PhaseRunning
+	PhaseStopping
+	PhaseStopped
+)
+
+// String returns the string representation of the lifecycle phase
+func (p LifecyclePhase) String() string {
+	switch p {
+	case PhaseInitializing:
+		return "initializing"
+	case PhaseStarting:
+		return "starting"
+	case PhaseRunning:
+		return "running"
+	case PhaseStopping:
+		return "stopping"
+	case PhaseStopped:
+		return "stopped"
+	default:
+		return "unknown"
+	}
+}
+
+// ShutdownHook represents a function to be called during shutdown
+type ShutdownHook func(ctx context.Context) error
+
+// LifecycleHook represents a function to be called during lifecycle transitions
+type LifecycleHook func(ctx context.Context, phase LifecyclePhase) error
+
+// LifecycleManager manages server lifecycle and shutdown hooks
+type LifecycleManager struct {
+	phase           LifecyclePhase
+	shutdownHooks   []ShutdownHook
+	lifecycleHooks  []LifecycleHook
+	shutdownTimeout time.Duration
+	mu              sync.RWMutex
+}
+
 // Server represents an MCP server
 type Server struct {
-	name         string
-	version      string
-	capabilities protocol.ServerCapabilities
-	tools        map[string]*ToolRegistration
-	resources    map[string]*ResourceRegistration
-	prompts      map[string]*PromptRegistration
-	transport    transport.Transport
-	mutex        sync.RWMutex
-	initialized  bool
+	name             string
+	version          string
+	capabilities     protocol.ServerCapabilities
+	tools            map[string]*ToolRegistration
+	resources        map[string]*ResourceRegistration
+	prompts          map[string]*PromptRegistration
+	transport        transport.Transport
+	mutex            sync.RWMutex
+	initialized      bool
+	lifecycleManager *LifecycleManager
 }
 
 // ToolRegistration represents a registered tool
@@ -73,6 +120,10 @@ func NewServer(name, version string) *Server {
 				ListChanged: false,
 			},
 		},
+		lifecycleManager: &LifecycleManager{
+			phase:           PhaseInitializing,
+			shutdownTimeout: 30 * time.Second,
+		},
 	}
 }
 
@@ -116,15 +167,52 @@ func (s *Server) SetTransport(t transport.Transport) {
 
 // Start starts the server
 func (s *Server) Start(ctx context.Context) error {
+	// Transition to starting phase
+	if err := s.lifecycleManager.SetPhase(ctx, PhaseStarting); err != nil {
+		return fmt.Errorf("failed to transition to starting phase: %w", err)
+	}
+
 	if s.transport == nil {
+		// Transition back to stopped on failure
+		_ = s.lifecycleManager.SetPhase(context.Background(), PhaseStopped)
 		return fmt.Errorf("no transport configured")
 	}
 
-	return s.transport.Start(ctx, s)
+	// Start the transport
+	if err := s.transport.Start(ctx, s); err != nil {
+		// Transition back to stopped on failure
+		_ = s.lifecycleManager.SetPhase(context.Background(), PhaseStopped)
+		return fmt.Errorf("failed to start transport: %w", err)
+	}
+
+	// Transition to running phase
+	if err := s.lifecycleManager.SetPhase(ctx, PhaseRunning); err != nil {
+		// Stop transport and transition to stopped
+		_ = s.transport.Stop()
+		_ = s.lifecycleManager.SetPhase(context.Background(), PhaseStopped)
+		return fmt.Errorf("failed to transition to running phase: %w", err)
+	}
+
+	fmt.Printf("🚀 Server: %s v%s started successfully\n", s.name, s.version)
+	return nil
+}
+
+// StartWithTransport starts the server with the specified transport
+func (s *Server) StartWithTransport(ctx context.Context, transport transport.Transport) error {
+	s.SetTransport(transport)
+	return s.Start(ctx)
 }
 
 // HandleRequest handles an incoming JSON-RPC request
 func (s *Server) HandleRequest(ctx context.Context, req *protocol.JSONRPCRequest) *protocol.JSONRPCResponse {
+	// Ensure correlation ID exists in context
+	ctx = correlation.EnsureCorrelationID(ctx)
+	ctx = correlation.EnsureRequestID(ctx)
+
+	// Log request with correlation data
+	fmt.Printf("📨 %s\n", correlation.FormatLogMessage(ctx,
+		fmt.Sprintf("Handling JSON-RPC request: %s", req.Method)))
+
 	switch req.Method {
 	case "initialize":
 		return s.handleInitialize(ctx, req)
@@ -484,4 +572,190 @@ func detectClientType(clientInfo protocol.ClientInfo) string {
 	}
 
 	return "unknown"
+}
+
+// LifecycleManager methods
+
+// NewLifecycleManager creates a new lifecycle manager
+func NewLifecycleManager() *LifecycleManager {
+	return &LifecycleManager{
+		phase:           PhaseInitializing,
+		shutdownTimeout: 30 * time.Second,
+	}
+}
+
+// GetPhase returns the current lifecycle phase
+func (lm *LifecycleManager) GetPhase() LifecyclePhase {
+	lm.mu.RLock()
+	defer lm.mu.RUnlock()
+	return lm.phase
+}
+
+// SetPhase sets the current lifecycle phase and notifies hooks
+func (lm *LifecycleManager) SetPhase(ctx context.Context, phase LifecyclePhase) error {
+	lm.mu.Lock()
+	oldPhase := lm.phase
+	lm.phase = phase
+	hooks := make([]LifecycleHook, len(lm.lifecycleHooks))
+	copy(hooks, lm.lifecycleHooks)
+	lm.mu.Unlock()
+
+	if oldPhase != phase {
+		fmt.Printf("🔄 Server: Lifecycle transition %s → %s\n", oldPhase, phase)
+
+		// Execute lifecycle hooks
+		for _, hook := range hooks {
+			if err := hook(ctx, phase); err != nil {
+				fmt.Printf("❌ Lifecycle hook failed for phase %s: %v\n", phase, err)
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// AddShutdownHook adds a function to be called during shutdown
+func (lm *LifecycleManager) AddShutdownHook(hook ShutdownHook) {
+	lm.mu.Lock()
+	defer lm.mu.Unlock()
+	lm.shutdownHooks = append(lm.shutdownHooks, hook)
+}
+
+// AddLifecycleHook adds a function to be called during lifecycle transitions
+func (lm *LifecycleManager) AddLifecycleHook(hook LifecycleHook) {
+	lm.mu.Lock()
+	defer lm.mu.Unlock()
+	lm.lifecycleHooks = append(lm.lifecycleHooks, hook)
+}
+
+// SetShutdownTimeout configures the shutdown timeout
+func (lm *LifecycleManager) SetShutdownTimeout(timeout time.Duration) {
+	lm.mu.Lock()
+	defer lm.mu.Unlock()
+	lm.shutdownTimeout = timeout
+}
+
+// ExecuteShutdownHooks executes all registered shutdown hooks
+func (lm *LifecycleManager) ExecuteShutdownHooks(ctx context.Context) error {
+	lm.mu.RLock()
+	hooks := make([]ShutdownHook, len(lm.shutdownHooks))
+	copy(hooks, lm.shutdownHooks)
+	timeout := lm.shutdownTimeout
+	lm.mu.RUnlock()
+
+	if len(hooks) == 0 {
+		return nil
+	}
+
+	fmt.Printf("🪝 Server: Executing %d shutdown hooks...\n", len(hooks))
+
+	// Create context with timeout for shutdown hooks
+	hookCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	// Execute hooks in reverse order (LIFO)
+	var errors []error
+	for i := len(hooks) - 1; i >= 0; i-- {
+		hook := hooks[i]
+		if err := hook(hookCtx); err != nil {
+			fmt.Printf("❌ Shutdown hook %d failed: %v\n", i, err)
+			errors = append(errors, err)
+		} else {
+			fmt.Printf("✅ Shutdown hook %d completed\n", i)
+		}
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("shutdown hooks failed: %v", errors)
+	}
+
+	fmt.Println("✅ All shutdown hooks completed successfully")
+	return nil
+}
+
+// Server lifecycle methods
+
+// AddShutdownHook adds a function to be called during shutdown
+func (s *Server) AddShutdownHook(hook ShutdownHook) {
+	s.lifecycleManager.AddShutdownHook(hook)
+}
+
+// AddLifecycleHook adds a function to be called during lifecycle transitions
+func (s *Server) AddLifecycleHook(hook LifecycleHook) {
+	s.lifecycleManager.AddLifecycleHook(hook)
+}
+
+// GetLifecyclePhase returns the current lifecycle phase
+func (s *Server) GetLifecyclePhase() LifecyclePhase {
+	return s.lifecycleManager.GetPhase()
+}
+
+// SetShutdownTimeout configures the shutdown timeout
+func (s *Server) SetShutdownTimeout(timeout time.Duration) {
+	s.lifecycleManager.SetShutdownTimeout(timeout)
+}
+
+// Stop stops the server with lifecycle management
+func (s *Server) Stop(ctx context.Context) error {
+	// Transition to stopping phase
+	if err := s.lifecycleManager.SetPhase(ctx, PhaseStopping); err != nil {
+		fmt.Printf("⚠️ Failed to transition to stopping phase: %v\n", err)
+	}
+
+	fmt.Printf("🛑 Server: Stopping %s v%s...\n", s.name, s.version)
+
+	// Execute shutdown hooks
+	if err := s.lifecycleManager.ExecuteShutdownHooks(ctx); err != nil {
+		fmt.Printf("⚠️ Shutdown hooks failed: %v\n", err)
+	}
+
+	// Stop the transport
+	s.mutex.RLock()
+	transport := s.transport
+	s.mutex.RUnlock()
+
+	if transport != nil {
+		if err := transport.Stop(); err != nil {
+			fmt.Printf("⚠️ Failed to stop transport: %v\n", err)
+		}
+	}
+
+	// Transition to stopped phase
+	if err := s.lifecycleManager.SetPhase(ctx, PhaseStopped); err != nil {
+		fmt.Printf("⚠️ Failed to transition to stopped phase: %v\n", err)
+	}
+
+	fmt.Printf("✅ Server: %s v%s stopped\n", s.name, s.version)
+	return nil
+}
+
+// Shutdown performs graceful shutdown with timeout
+func (s *Server) Shutdown(timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	return s.Stop(ctx)
+}
+
+// IsRunning returns true if the server is in running phase
+func (s *Server) IsRunning() bool {
+	return s.lifecycleManager.GetPhase() == PhaseRunning
+}
+
+// WaitForShutdown waits for the server to be stopped
+func (s *Server) WaitForShutdown(ctx context.Context) error {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			if s.lifecycleManager.GetPhase() == PhaseStopped {
+				return nil
+			}
+		}
+	}
 }

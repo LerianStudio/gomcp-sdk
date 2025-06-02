@@ -3,9 +3,13 @@ package protocol
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"runtime"
+	"time"
 )
 
 // Version represents the MCP protocol version
@@ -32,6 +36,15 @@ type JSONRPCError struct {
 	Code    int         `json:"code"`
 	Message string      `json:"message"`
 	Data    interface{} `json:"data,omitempty"`
+}
+
+// StandardError represents a standardized error format across all transports
+type StandardError struct {
+	*JSONRPCError
+	CorrelationID string                 `json:"correlationId,omitempty"`
+	Timestamp     int64                  `json:"timestamp,omitempty"`
+	Details       map[string]interface{} `json:"details,omitempty"`
+	Stack         string                 `json:"stack,omitempty"`
 }
 
 // Error implements the error interface
@@ -382,4 +395,76 @@ func mapToStruct(source map[string]interface{}, target interface{}) error {
 	}
 
 	return nil
+}
+
+// Context keys for correlation ID
+type contextKey string
+
+const (
+	CorrelationIDKey contextKey = "correlationId"
+)
+
+// GenerateCorrelationID generates a new correlation ID
+func GenerateCorrelationID() string {
+	bytes := make([]byte, 16)
+	if _, err := rand.Read(bytes); err != nil {
+		// Fallback to timestamp-based ID if crypto/rand fails
+		return fmt.Sprintf("id_%d", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(bytes)
+}
+
+// WithCorrelationID adds a correlation ID to the context
+func WithCorrelationID(ctx context.Context, correlationID string) context.Context {
+	return context.WithValue(ctx, CorrelationIDKey, correlationID)
+}
+
+// GetCorrelationID extracts correlation ID from context
+func GetCorrelationID(ctx context.Context) string {
+	if id, ok := ctx.Value(CorrelationIDKey).(string); ok {
+		return id
+	}
+	return ""
+}
+
+// NewStandardError creates a new standardized error with correlation ID and stack trace
+func NewStandardError(ctx context.Context, code int, message string, data interface{}) *StandardError {
+	correlationID := GetCorrelationID(ctx)
+	if correlationID == "" {
+		correlationID = GenerateCorrelationID()
+	}
+
+	var stack string
+	if code >= InternalError { // Only include stack trace for server errors
+		buf := make([]byte, 4096)
+		n := runtime.Stack(buf, false)
+		stack = string(buf[:n])
+	}
+
+	return &StandardError{
+		JSONRPCError: &JSONRPCError{
+			Code:    code,
+			Message: message,
+			Data:    data,
+		},
+		CorrelationID: correlationID,
+		Timestamp:     time.Now().Unix(),
+		Details:       make(map[string]interface{}),
+		Stack:         stack,
+	}
+}
+
+// NewStandardErrorFromJSONRPC converts a JSONRPCError to StandardError
+func NewStandardErrorFromJSONRPC(ctx context.Context, err *JSONRPCError) *StandardError {
+	return NewStandardError(ctx, err.Code, err.Message, err.Data)
+}
+
+// ToJSONRPCError converts StandardError back to JSONRPCError for compatibility
+func (e *StandardError) ToJSONRPCError() *JSONRPCError {
+	return e.JSONRPCError
+}
+
+// Error implements the error interface for StandardError
+func (e *StandardError) Error() string {
+	return e.Message
 }

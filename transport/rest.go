@@ -675,6 +675,27 @@ func getClientIP(r *http.Request) string {
 	return r.RemoteAddr
 }
 
+// ServeHTTP handles direct HTTP requests without starting a server
+// This method allows the REST transport to be used as an http.Handler
+func (t *RESTTransport) ServeHTTP(w http.ResponseWriter, r *http.Request, handler RequestHandler) {
+	// Set the handler for this request
+	t.handler = handler
+
+	// Create mux and setup routes
+	mux := http.NewServeMux()
+	t.setupRoutes(mux)
+
+	// OpenAPI documentation routes
+	if t.restConfig.EnableDocs {
+		mux.HandleFunc(t.restConfig.APIPrefix+"/docs", t.handleDocs)
+		mux.HandleFunc(t.restConfig.APIPrefix+"/openapi.json", t.handleOpenAPISpec)
+	}
+
+	// Apply middleware and serve
+	handler_with_middleware := t.wrapWithRESTMiddleware(mux)
+	handler_with_middleware.ServeHTTP(w, r)
+}
+
 func generateID() string {
 	return fmt.Sprintf("%d", time.Now().UnixNano())
 }

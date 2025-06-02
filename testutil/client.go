@@ -5,11 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/LerianStudio/gomcp-sdk/protocol"
 	"io"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/LerianStudio/gomcp-sdk/protocol"
 )
 
 // TestClient provides a test client for MCP servers
@@ -312,10 +314,18 @@ func (c *TestClient) Close() error {
 	c.mu.Unlock()
 
 	// Close all pipes to trigger EOF in ReadResponses
-	c.clientReader.Close()
-	c.clientWriter.Close()
-	c.serverReader.Close()
-	c.serverWriter.Close()
+	if err := c.clientReader.Close(); err != nil {
+		log.Printf("Error closing client reader: %v", err)
+	}
+	if err := c.clientWriter.Close(); err != nil {
+		log.Printf("Error closing client writer: %v", err)
+	}
+	if err := c.serverReader.Close(); err != nil {
+		log.Printf("Error closing server reader: %v", err)
+	}
+	if err := c.serverWriter.Close(); err != nil {
+		log.Printf("Error closing server writer: %v", err)
+	}
 
 	// Wait for ReadResponses to finish
 	c.readWg.Wait()

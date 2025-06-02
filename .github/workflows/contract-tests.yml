@@ -1,0 +1,278 @@
+name: Contract Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  contract-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23'
+        
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+          
+    - name: Install dependencies
+      run: go mod download
+      
+    - name: Run contract tests
+      run: |
+        go test -v -tags=contract ./testing/...
+        
+    - name: Run REST API contract tests
+      run: |
+        go test -v -run TestHTTPContractCompliance ./testing/...
+        
+    - name: Run JSON-RPC compliance tests
+      run: |
+        go test -v -run TestJSONRPCCompliance ./testing/...
+        
+    - name: Start test server for OpenAPI validation
+      run: |
+        # Start server in background
+        go run examples/api-gateway/main.go &
+        SERVER_PID=$!
+        
+        # Wait for server to start
+        sleep 10
+        
+        # Test if server is responding
+        curl -f http://localhost:8080/api/v1/health || exit 1
+        
+        # Stop server
+        kill $SERVER_PID || true
+      timeout-minutes: 5
+      
+    - name: Validate OpenAPI specification
+      run: |
+        # Install Spectral CLI for OpenAPI validation
+        npm install -g @stoplight/spectral-cli
+        
+        # Start server for OpenAPI spec validation
+        go run examples/api-gateway/main.go &
+        SERVER_PID=$!
+        
+        # Wait for server
+        sleep 10
+        
+        # Validate OpenAPI spec
+        curl -s http://localhost:8080/api/v1/openapi.json | spectral lint --stdin --verbose
+        
+        # Clean up
+        kill $SERVER_PID || true
+      timeout-minutes: 5
+      
+    - name: Test backward compatibility
+      run: |
+        # Run compatibility tests
+        go test -v -tags=compatibility ./protocol/...
+        go test -v -tags=compatibility ./transport/...
+        
+    - name: Contract test coverage
+      run: |
+        go test -v -coverprofile=contract-coverage.out ./testing/...
+        go tool cover -html=contract-coverage.out -o contract-coverage.html
+        
+    - name: Upload contract test coverage
+      uses: actions/upload-artifact@v3
+      with:
+        name: contract-test-coverage
+        path: contract-coverage.html
+        
+  breaking-change-detection:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for comparison
+        
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23'
+        
+    - name: Install go-apidiff
+      run: go install golang.org/x/exp/cmd/apidiff@latest
+      
+    - name: Check for breaking changes
+      run: |
+        # Compare current branch with main branch
+        git checkout main
+        go list -json -export ./... > main-api.json
+        
+        git checkout ${{ github.sha }}
+        go list -json -export ./... > current-api.json
+        
+        # Check for breaking changes
+        apidiff main-api.json current-api.json > api-diff.txt || true
+        
+        # Check if there are breaking changes
+        if grep -q "breaking" api-diff.txt; then
+          echo "❌ Breaking changes detected:"
+          cat api-diff.txt
+          exit 1
+        else
+          echo "✅ No breaking changes detected"
+          cat api-diff.txt
+        fi
+        
+    - name: Upload API diff report
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: api-diff-report
+        path: api-diff.txt
+        
+  schema-validation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23'
+        
+    - name: Validate JSON Schema definitions
+      run: |
+        # Start server
+        go run examples/api-gateway/main.go &
+        SERVER_PID=$!
+        sleep 10
+        
+        # Test schema validation
+        echo "Testing valid tool call..."
+        curl -X POST http://localhost:8080/api/v1/tools/echo \
+          -H "Content-Type: application/json" \
+          -d '{"message": "test"}' \
+          -f || exit 1
+          
+        echo "Testing invalid tool call (should fail)..."
+        curl -X POST http://localhost:8080/api/v1/tools/echo \
+          -H "Content-Type: application/json" \
+          -d '{"invalid": "parameter"}' \
+          -w "%{http_code}" -o /dev/null | grep -q "400" || exit 1
+          
+        # Clean up
+        kill $SERVER_PID || true
+        
+  client-compatibility:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        client-type: [curl, python, javascript]
+        
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23'
+        
+    - name: Start MCP server
+      run: |
+        go run examples/api-gateway/main.go &
+        echo $! > server.pid
+        sleep 10
+        
+    - name: Test cURL client compatibility
+      if: matrix.client-type == 'curl'
+      run: |
+        # Test basic HTTP requests
+        curl -f http://localhost:8080/api/v1/health
+        curl -f http://localhost:8080/api/v1/tools
+        curl -X POST http://localhost:8080/api/v1/tools/echo \
+          -H "Content-Type: application/json" \
+          -d '{"message": "Hello from cURL"}' \
+          -f
+          
+    - name: Test Python client compatibility
+      if: matrix.client-type == 'python'
+      run: |
+        pip install requests
+        python3 -c "
+        import requests
+        import json
+        
+        # Test health endpoint
+        resp = requests.get('http://localhost:8080/api/v1/health')
+        assert resp.status_code == 200
+        
+        # Test tools listing
+        resp = requests.get('http://localhost:8080/api/v1/tools')
+        assert resp.status_code == 200
+        tools = resp.json()['tools']
+        assert len(tools) > 0
+        
+        # Test tool execution
+        resp = requests.post('http://localhost:8080/api/v1/tools/echo',
+                           json={'message': 'Hello from Python'})
+        assert resp.status_code == 200
+        result = resp.json()
+        assert 'content' in result
+        print('Python client compatibility: ✅')
+        "
+        
+    - name: Test JavaScript client compatibility
+      if: matrix.client-type == 'javascript'
+      run: |
+        npm install node-fetch
+        node -e "
+        const fetch = require('node-fetch');
+        
+        async function test() {
+          // Test health endpoint
+          let resp = await fetch('http://localhost:8080/api/v1/health');
+          if (!resp.ok) throw new Error('Health check failed');
+          
+          // Test tools listing
+          resp = await fetch('http://localhost:8080/api/v1/tools');
+          if (!resp.ok) throw new Error('Tools listing failed');
+          const tools = await resp.json();
+          if (!tools.tools || tools.tools.length === 0) throw new Error('No tools found');
+          
+          // Test tool execution
+          resp = await fetch('http://localhost:8080/api/v1/tools/echo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: 'Hello from JavaScript' })
+          });
+          if (!resp.ok) throw new Error('Tool execution failed');
+          const result = await resp.json();
+          if (!result.content) throw new Error('Invalid tool response');
+          
+          console.log('JavaScript client compatibility: ✅');
+        }
+        
+        test().catch(err => {
+          console.error('JavaScript client test failed:', err);
+          process.exit(1);
+        });
+        "
+        
+    - name: Cleanup
+      if: always()
+      run: |
+        if [ -f server.pid ]; then
+          kill $(cat server.pid) || true
+          rm server.pid
+        fi

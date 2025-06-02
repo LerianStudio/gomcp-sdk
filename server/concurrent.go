@@ -460,3 +460,297 @@ func (ph *PipelineHandler) Shutdown() {
 	ph.cancel()
 	ph.wg.Wait()
 }
+
+// AdaptiveWorkerPool provides dynamic worker pool scaling based on load
+type AdaptiveWorkerPool struct {
+	*ConcurrentHandler
+
+	// Scaling configuration
+	minWorkers         int
+	maxWorkers         int
+	scaleUpThreshold   float64 // Scale up when utilization > threshold
+	scaleDownThreshold float64 // Scale down when utilization < threshold
+	scalingInterval    time.Duration
+
+	// Current state
+	currentWorkers int64
+	lastScaleTime  time.Time
+
+	// Metrics for scaling decisions
+	utilizationHistory []float64
+	historySize        int
+
+	// Control
+	scalingMu     sync.RWMutex
+	scalingTicker *time.Ticker
+	scalingCtx    context.Context
+	scalingCancel context.CancelFunc
+}
+
+// AdaptiveOptions configures the adaptive worker pool
+type AdaptiveOptions struct {
+	*ConcurrentOptions
+	MinWorkers         int
+	MaxWorkers         int
+	ScaleUpThreshold   float64
+	ScaleDownThreshold float64
+	ScalingInterval    time.Duration
+}
+
+// DefaultAdaptiveOptions returns default adaptive options
+func DefaultAdaptiveOptions() *AdaptiveOptions {
+	return &AdaptiveOptions{
+		ConcurrentOptions:  DefaultConcurrentOptions(),
+		MinWorkers:         runtime.NumCPU(),
+		MaxWorkers:         runtime.NumCPU() * 8,
+		ScaleUpThreshold:   0.8, // Scale up when 80% utilized
+		ScaleDownThreshold: 0.3, // Scale down when < 30% utilized
+		ScalingInterval:    30 * time.Second,
+	}
+}
+
+// NewAdaptiveWorkerPool creates a new adaptive worker pool
+func NewAdaptiveWorkerPool(handler RequestHandler, opts *AdaptiveOptions) *AdaptiveWorkerPool {
+	if opts == nil {
+		opts = DefaultAdaptiveOptions()
+	}
+
+	// Ensure min/max constraints
+	if opts.MinWorkers < 1 {
+		opts.MinWorkers = 1
+	}
+	if opts.MaxWorkers < opts.MinWorkers {
+		opts.MaxWorkers = opts.MinWorkers * 2
+	}
+	if opts.ConcurrentOptions.NumWorkers < opts.MinWorkers {
+		opts.ConcurrentOptions.NumWorkers = opts.MinWorkers
+	}
+	if opts.ConcurrentOptions.NumWorkers > opts.MaxWorkers {
+		opts.ConcurrentOptions.NumWorkers = opts.MaxWorkers
+	}
+
+	// Create base concurrent handler
+	concurrentHandler := NewConcurrentHandler(handler, opts.ConcurrentOptions)
+
+	scalingCtx, scalingCancel := context.WithCancel(context.Background())
+
+	awp := &AdaptiveWorkerPool{
+		ConcurrentHandler:  concurrentHandler,
+		minWorkers:         opts.MinWorkers,
+		maxWorkers:         opts.MaxWorkers,
+		scaleUpThreshold:   opts.ScaleUpThreshold,
+		scaleDownThreshold: opts.ScaleDownThreshold,
+		scalingInterval:    opts.ScalingInterval,
+		currentWorkers:     int64(opts.ConcurrentOptions.NumWorkers),
+		lastScaleTime:      time.Now(),
+		utilizationHistory: make([]float64, 0, 10),
+		historySize:        10,
+		scalingCtx:         scalingCtx,
+		scalingCancel:      scalingCancel,
+	}
+
+	// Start scaling monitor
+	awp.startScalingMonitor()
+
+	return awp
+}
+
+// startScalingMonitor starts the scaling monitoring goroutine
+func (awp *AdaptiveWorkerPool) startScalingMonitor() {
+	awp.scalingTicker = time.NewTicker(awp.scalingInterval)
+
+	go func() {
+		defer awp.scalingTicker.Stop()
+
+		for {
+			select {
+			case <-awp.scalingTicker.C:
+				awp.evaluateScaling()
+			case <-awp.scalingCtx.Done():
+				return
+			case <-awp.ctx.Done():
+				return
+			}
+		}
+	}()
+}
+
+// evaluateScaling evaluates whether to scale workers up or down
+func (awp *AdaptiveWorkerPool) evaluateScaling() {
+	awp.scalingMu.Lock()
+	defer awp.scalingMu.Unlock()
+
+	// Calculate current utilization
+	utilization := awp.calculateUtilization()
+
+	// Add to history
+	awp.utilizationHistory = append(awp.utilizationHistory, utilization)
+	if len(awp.utilizationHistory) > awp.historySize {
+		awp.utilizationHistory = awp.utilizationHistory[1:]
+	}
+
+	// Need at least 3 data points for scaling decisions
+	if len(awp.utilizationHistory) < 3 {
+		return
+	}
+
+	// Calculate average utilization over recent history
+	avgUtilization := awp.calculateAverageUtilization()
+	currentWorkers := atomic.LoadInt64(&awp.currentWorkers)
+
+	// Determine scaling action
+	var scaleAction string
+	var targetWorkers int64
+
+	if avgUtilization > awp.scaleUpThreshold && currentWorkers < int64(awp.maxWorkers) {
+		// Scale up: increase by 25% or minimum 1 worker
+		increase := max(1, int64(float64(currentWorkers)*0.25))
+		targetWorkers = min(int64(awp.maxWorkers), currentWorkers+increase)
+		scaleAction = "up"
+	} else if avgUtilization < awp.scaleDownThreshold && currentWorkers > int64(awp.minWorkers) {
+		// Scale down: decrease by 25% or minimum 1 worker
+		decrease := max(1, int64(float64(currentWorkers)*0.25))
+		targetWorkers = max(int64(awp.minWorkers), currentWorkers-decrease)
+		scaleAction = "down"
+	} else {
+		// No scaling needed
+		return
+	}
+
+	// Respect minimum time between scaling operations
+	if time.Since(awp.lastScaleTime) < awp.scalingInterval {
+		return
+	}
+
+	// Perform scaling
+	if targetWorkers != currentWorkers {
+		awp.scaleWorkers(targetWorkers, scaleAction)
+		awp.lastScaleTime = time.Now()
+	}
+}
+
+// calculateUtilization calculates current worker utilization
+func (awp *AdaptiveWorkerPool) calculateUtilization() float64 {
+	activeRequests := atomic.LoadInt64(&awp.activeRequests)
+	currentWorkers := atomic.LoadInt64(&awp.currentWorkers)
+
+	if currentWorkers == 0 {
+		return 0.0
+	}
+
+	return float64(activeRequests) / float64(currentWorkers)
+}
+
+// calculateAverageUtilization calculates average utilization from history
+func (awp *AdaptiveWorkerPool) calculateAverageUtilization() float64 {
+	if len(awp.utilizationHistory) == 0 {
+		return 0.0
+	}
+
+	var sum float64
+	for _, util := range awp.utilizationHistory {
+		sum += util
+	}
+
+	return sum / float64(len(awp.utilizationHistory))
+}
+
+// scaleWorkers scales the worker pool to the target size
+func (awp *AdaptiveWorkerPool) scaleWorkers(targetWorkers int64, action string) {
+	currentWorkers := atomic.LoadInt64(&awp.currentWorkers)
+
+	if action == "up" && targetWorkers > currentWorkers {
+		// Add workers
+		workersToAdd := targetWorkers - currentWorkers
+		awp.addWorkers(int(workersToAdd))
+		atomic.StoreInt64(&awp.currentWorkers, targetWorkers)
+	} else if action == "down" && targetWorkers < currentWorkers {
+		// Remove workers (gracefully)
+		workersToRemove := currentWorkers - targetWorkers
+		awp.removeWorkers(int(workersToRemove))
+		atomic.StoreInt64(&awp.currentWorkers, targetWorkers)
+	}
+}
+
+// addWorkers adds new workers to the pool
+func (awp *AdaptiveWorkerPool) addWorkers(count int) {
+	for i := 0; i < count; i++ {
+		worker := &worker{
+			id:      len(awp.workers) + i,
+			handler: awp.ConcurrentHandler,
+		}
+
+		awp.workers = append(awp.workers, worker)
+		awp.wg.Add(1)
+		go worker.run()
+	}
+}
+
+// removeWorkers removes workers from the pool (graceful shutdown)
+func (awp *AdaptiveWorkerPool) removeWorkers(count int) {
+	// Note: This is a simplified implementation
+	// In a production system, you'd want to gracefully stop specific workers
+	// For now, we just reduce the effective worker count
+	// The actual goroutines will stop when the context is cancelled
+
+	if count >= len(awp.workers) {
+		count = len(awp.workers) - awp.minWorkers
+	}
+
+	if count > 0 {
+		awp.workers = awp.workers[:len(awp.workers)-count]
+	}
+}
+
+// GetWorkerPoolStats returns current worker pool statistics
+func (awp *AdaptiveWorkerPool) GetWorkerPoolStats() map[string]interface{} {
+	awp.scalingMu.RLock()
+	defer awp.scalingMu.RUnlock()
+
+	currentUtilization := awp.calculateUtilization()
+	avgUtilization := awp.calculateAverageUtilization()
+
+	stats := map[string]interface{}{
+		"current_workers":      atomic.LoadInt64(&awp.currentWorkers),
+		"min_workers":          awp.minWorkers,
+		"max_workers":          awp.maxWorkers,
+		"current_utilization":  currentUtilization,
+		"average_utilization":  avgUtilization,
+		"scale_up_threshold":   awp.scaleUpThreshold,
+		"scale_down_threshold": awp.scaleDownThreshold,
+		"last_scale_time":      awp.lastScaleTime.Unix(),
+		"utilization_history":  awp.utilizationHistory,
+	}
+
+	// Add base metrics
+	baseMetrics := awp.ConcurrentHandler.Metrics()
+	for k, v := range baseMetrics {
+		stats[k] = v
+	}
+
+	return stats
+}
+
+// Shutdown gracefully shuts down the adaptive worker pool
+func (awp *AdaptiveWorkerPool) Shutdown(timeout time.Duration) error {
+	// Stop scaling monitor
+	awp.scalingCancel()
+
+	// Shutdown base handler
+	return awp.ConcurrentHandler.Shutdown(timeout)
+}
+
+// Helper functions
+func min(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}

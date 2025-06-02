@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/LerianStudio/gomcp-sdk/protocol"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/LerianStudio/gomcp-sdk/protocol"
 )
 
 // PluginManifest describes a plugin's MCP capabilities
@@ -41,7 +42,7 @@ type PluginWatcher struct {
 // NewPluginWatcher creates a new plugin watcher
 func NewPluginWatcher(path string, scanInterval time.Duration, registry *Registry) (*PluginWatcher, error) {
 	// Ensure the plugin directory exists
-	if err := os.MkdirAll(path, 0755); err != nil {
+	if err := os.MkdirAll(path, 0750); err != nil {
 		return nil, fmt.Errorf("failed to create plugin directory: %w", err)
 	}
 
@@ -197,7 +198,18 @@ func (w *PluginWatcher) scan() error {
 
 // loadManifest loads a plugin manifest from disk
 func (w *PluginWatcher) loadManifest(path string) (*PluginManifest, error) {
-	data, err := ioutil.ReadFile(path)
+	// Security: Validate path to prevent directory traversal
+	cleanPath := filepath.Clean(path)
+	if !strings.HasPrefix(cleanPath, filepath.Clean(w.path)) {
+		return nil, fmt.Errorf("path outside plugin directory: %s", path)
+	}
+
+	// Only allow manifest files
+	if !strings.HasSuffix(cleanPath, "mcp-manifest.json") {
+		return nil, fmt.Errorf("invalid manifest file: %s", path)
+	}
+
+	data, err := os.ReadFile(cleanPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read manifest: %w", err)
 	}
