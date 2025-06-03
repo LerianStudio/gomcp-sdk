@@ -155,7 +155,7 @@ func (h *Handler) determineModel(req *CreateMessageRequest) string {
 
 // GetCapabilities returns the sampling capabilities
 func (h *Handler) GetCapabilities() map[string]interface{} {
-	models := []string{}
+	var models []string
 
 	if h.provider != nil {
 		// Return actual supported models from the provider

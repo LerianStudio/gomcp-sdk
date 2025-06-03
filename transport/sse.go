@@ -727,7 +727,7 @@ func (t *SSETransport) GetClients() []string {
 func (t *SSETransport) wrapWithMiddleware(handler http.Handler) http.Handler {
 	// Only apply middleware that preserve the http.Flusher interface
 	// Skip error handling and recovery middleware that might wrap the response writer
-	
+
 	// Correlation middleware (safe for SSE)
 	if t.config.EnableCorrelation {
 		handler = correlation.CorrelationMiddleware()(handler)

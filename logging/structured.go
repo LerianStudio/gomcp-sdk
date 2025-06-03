@@ -226,7 +226,7 @@ func (l *Logger) WithFields(fields map[string]interface{}) *Logger {
 	}
 
 	return &Logger{
-		Logger: l.Logger.With(attrs...),
+		Logger: l.With(attrs...),
 		config: l.config,
 	}
 }
@@ -234,7 +234,7 @@ func (l *Logger) WithFields(fields map[string]interface{}) *Logger {
 // WithError returns a logger with error field
 func (l *Logger) WithError(err error) *Logger {
 	return &Logger{
-		Logger: l.Logger.With(slog.String("error", err.Error())),
+		Logger: l.With(slog.String("error", err.Error())),
 		config: l.config,
 	}
 }
@@ -645,7 +645,7 @@ func ComponentFilter(allowedComponents ...string) FilterFunc {
 // WithCorrelationID adds correlation ID to logger
 func (l *Logger) WithCorrelationID(correlationID string) *Logger {
 	return &Logger{
-		Logger: l.Logger.With(slog.String("correlation_id", correlationID)),
+		Logger: l.With(slog.String("correlation_id", correlationID)),
 		config: l.config,
 	}
 }
@@ -653,7 +653,7 @@ func (l *Logger) WithCorrelationID(correlationID string) *Logger {
 // WithComponent adds component tag to logger
 func (l *Logger) WithComponent(component string) *Logger {
 	return &Logger{
-		Logger: l.Logger.With(slog.String("component", component)),
+		Logger: l.With(slog.String("component", component)),
 		config: l.config,
 	}
 }
@@ -661,7 +661,7 @@ func (l *Logger) WithComponent(component string) *Logger {
 // WithDuration adds duration to logger
 func (l *Logger) WithDuration(duration time.Duration) *Logger {
 	return &Logger{
-		Logger: l.Logger.With(slog.Duration("duration", duration)),
+		Logger: l.With(slog.Duration("duration", duration)),
 		config: l.config,
 	}
 }

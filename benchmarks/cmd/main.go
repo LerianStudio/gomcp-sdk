@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	
+
 	"benchmarks"
 )
 
@@ -57,7 +57,7 @@ func main() {
 			fmt.Printf("⚠️  Found %d performance regressions\n", len(regressionReport.Regressions))
 			if *verbose {
 				for _, reg := range regressionReport.Regressions {
-					fmt.Printf("   - %s: %.2f%% slower (%s)\n", 
+					fmt.Printf("   - %s: %.2f%% slower (%s)\n",
 						reg.BenchmarkName, reg.ChangePercent, reg.Severity)
 				}
 			}
@@ -69,7 +69,7 @@ func main() {
 			fmt.Printf("🎉 Found %d performance improvements\n", len(regressionReport.Improvements))
 			if *verbose {
 				for _, imp := range regressionReport.Improvements {
-					fmt.Printf("   - %s: %.2f%% faster\n", 
+					fmt.Printf("   - %s: %.2f%% faster\n",
 						imp.BenchmarkName, -imp.ChangePercent)
 				}
 			}
@@ -80,12 +80,12 @@ func main() {
 	if *report {
 		fmt.Println("📝 Generating performance report...")
 		reportContent := runner.GenerateReport(summary, regressionReport)
-		
+
 		reportFile := filepath.Join(*outputDir, "performance_report.md")
 		if err := os.WriteFile(reportFile, []byte(reportContent), 0600); err != nil {
 			log.Fatalf("❌ Failed to write report: %v", err)
 		}
-		
+
 		fmt.Printf("📄 Report written to: %s\n", reportFile)
 	}
 

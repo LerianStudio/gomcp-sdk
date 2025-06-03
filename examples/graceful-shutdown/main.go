@@ -40,10 +40,10 @@ import (
 
 func main() {
 	fmt.Println("🚀 Starting Graceful Shutdown Demo Server...")
-	
+
 	// Create the MCP server
 	srv := server.NewServer("graceful-shutdown-demo", "1.0.0")
-	
+
 	// Add a simple echo tool
 	srv.AddTool(protocol.Tool{
 		Name:        "echo",
@@ -85,7 +85,7 @@ func main() {
 	gracefulShutdown.Register(httpTransport)
 	fmt.Printf("🌐 HTTP server listening on %s\n", httpTransport.Address())
 
-	// Start WebSocket transport  
+	// Start WebSocket transport
 	wsTransport := startWebSocketTransport(srv)
 	gracefulShutdown.Register(wsTransport)
 	fmt.Printf("🔌 WebSocket server listening on ws://%s/ws\n", wsTransport.Address())
@@ -104,7 +104,7 @@ func handleEcho(ctx context.Context, params map[string]interface{}) (interface{}
 	}
 
 	// Include timestamp and echo the message
-	response := fmt.Sprintf("[%s] Echo: %s", 
+	response := fmt.Sprintf("[%s] Echo: %s",
 		time.Now().Format("15:04:05"), message)
 
 	return protocol.NewToolCallResult(protocol.NewContent(response)), nil
@@ -172,7 +172,7 @@ func startWebSocketTransport(srv *server.Server) *transport.WebSocketTransport {
 
 func printUsageInstructions(httpAddr, wsAddr string) {
 	fmt.Printf("\n📖 Usage Instructions:\n\n")
-	
+
 	fmt.Printf("🌐 HTTP Examples:\n")
 	fmt.Printf("  # Test echo tool\n")
 	fmt.Printf("  curl -X POST -H \"Content-Type: application/json\" \\\\\n")

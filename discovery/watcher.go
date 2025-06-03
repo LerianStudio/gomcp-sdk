@@ -156,6 +156,7 @@ func (w *PluginWatcher) scan() error {
 			// Check if manifest was modified
 			// For simplicity, we'll re-read all manifests each scan
 			// In production, you'd check modification time
+			_ = existingPlugin // TODO: implement modification time check
 		}
 
 		// Load manifest

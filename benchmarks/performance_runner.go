@@ -14,15 +14,15 @@ import (
 
 // BenchmarkResult represents the result of a benchmark run
 type BenchmarkResult struct {
-	Name            string        `json:"name"`
-	Iterations      int           `json:"iterations"`
-	NsPerOp         float64       `json:"ns_per_op"`
-	AllocsPerOp     int           `json:"allocs_per_op"`
-	BytesPerOp      int           `json:"bytes_per_op"`
-	MemAllocsPerOp  int           `json:"mem_allocs_per_op"`
-	MemBytesPerOp   int           `json:"mem_bytes_per_op"`
-	CustomMetrics   map[string]float64 `json:"custom_metrics"`
-	Timestamp       time.Time     `json:"timestamp"`
+	Name           string             `json:"name"`
+	Iterations     int                `json:"iterations"`
+	NsPerOp        float64            `json:"ns_per_op"`
+	AllocsPerOp    int                `json:"allocs_per_op"`
+	BytesPerOp     int                `json:"bytes_per_op"`
+	MemAllocsPerOp int                `json:"mem_allocs_per_op"`
+	MemBytesPerOp  int                `json:"mem_bytes_per_op"`
+	CustomMetrics  map[string]float64 `json:"custom_metrics"`
+	Timestamp      time.Time          `json:"timestamp"`
 }
 
 // BenchmarkSummary contains summary statistics for a benchmark run
@@ -37,8 +37,8 @@ type BenchmarkSummary struct {
 
 // PerformanceRunner manages benchmark execution and regression detection
 type PerformanceRunner struct {
-	outputDir       string
-	baselineFile    string
+	outputDir           string
+	baselineFile        string
 	regressionThreshold float64 // Percentage threshold for regression detection
 }
 
@@ -61,7 +61,7 @@ func (pr *PerformanceRunner) RunBenchmarks() (*BenchmarkSummary, error) {
 	// Run benchmarks with JSON output
 	cmd := exec.Command("go", "test", "-bench=.", "-benchmem", "-benchtime=3s", "-count=3", "-json")
 	cmd.Dir = "."
-	
+
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to run benchmarks: %w", err)
@@ -113,52 +113,52 @@ func (pr *PerformanceRunner) CheckRegression(current *BenchmarkSummary) (*Regres
 
 // RegressionReport contains regression analysis results
 type RegressionReport struct {
-	HasRegression    bool                     `json:"has_regression"`
-	Regressions      []RegressionDetail       `json:"regressions"`
-	Improvements     []RegressionDetail       `json:"improvements"`
-	Message          string                   `json:"message"`
-	OverallSummary   map[string]interface{}   `json:"overall_summary"`
+	HasRegression  bool                   `json:"has_regression"`
+	Regressions    []RegressionDetail     `json:"regressions"`
+	Improvements   []RegressionDetail     `json:"improvements"`
+	Message        string                 `json:"message"`
+	OverallSummary map[string]interface{} `json:"overall_summary"`
 }
 
 // RegressionDetail contains details about a specific regression
 type RegressionDetail struct {
-	BenchmarkName   string  `json:"benchmark_name"`
-	Metric          string  `json:"metric"`
-	BaselineValue   float64 `json:"baseline_value"`
-	CurrentValue    float64 `json:"current_value"`
-	ChangePercent   float64 `json:"change_percent"`
-	Severity        string  `json:"severity"` // "minor", "major", "critical"
+	BenchmarkName string  `json:"benchmark_name"`
+	Metric        string  `json:"metric"`
+	BaselineValue float64 `json:"baseline_value"`
+	CurrentValue  float64 `json:"current_value"`
+	ChangePercent float64 `json:"change_percent"`
+	Severity      string  `json:"severity"` // "minor", "major", "critical"
 }
 
 // parseBenchmarkOutput parses the JSON output from go test
 func (pr *PerformanceRunner) parseBenchmarkOutput(output []byte) ([]BenchmarkResult, error) {
 	lines := strings.Split(string(output), "\n")
 	var results []BenchmarkResult
-	
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		
+
 		var testOutput struct {
-			Action  string  `json:"Action"`
-			Package string  `json:"Package"`
-			Test    string  `json:"Test"`
-			Output  string  `json:"Output"`
+			Action  string `json:"Action"`
+			Package string `json:"Package"`
+			Test    string `json:"Test"`
+			Output  string `json:"Output"`
 		}
-		
+
 		if err := json.Unmarshal([]byte(line), &testOutput); err != nil {
 			continue // Skip non-JSON lines
 		}
-		
+
 		if testOutput.Action == "output" && strings.Contains(testOutput.Output, "Benchmark") {
 			if result := pr.parseBenchmarkLine(testOutput.Output); result != nil {
 				results = append(results, *result)
 			}
 		}
 	}
-	
+
 	return results, nil
 }
 
@@ -169,11 +169,11 @@ func (pr *PerformanceRunner) parseBenchmarkLine(line string) *BenchmarkResult {
 	if len(parts) < 4 || !strings.HasPrefix(parts[0], "Benchmark") {
 		return nil
 	}
-	
+
 	name := parts[0]
 	iterations, _ := strconv.Atoi(parts[1])
 	nsPerOp, _ := strconv.ParseFloat(parts[2], 64)
-	
+
 	result := &BenchmarkResult{
 		Name:          name,
 		Iterations:    iterations,
@@ -181,13 +181,13 @@ func (pr *PerformanceRunner) parseBenchmarkLine(line string) *BenchmarkResult {
 		CustomMetrics: make(map[string]float64),
 		Timestamp:     time.Now(),
 	}
-	
+
 	// Parse additional metrics if available
 	if len(parts) >= 6 {
 		result.AllocsPerOp, _ = strconv.Atoi(parts[4])
 		result.BytesPerOp, _ = strconv.Atoi(parts[5])
 	}
-	
+
 	return result
 }
 
@@ -196,15 +196,15 @@ func (pr *PerformanceRunner) generateSummaryStats(results []BenchmarkResult) map
 	if len(results) == 0 {
 		return map[string]interface{}{}
 	}
-	
+
 	var totalNsPerOp, totalAllocs, totalBytes float64
 	fastestNs, slowestNs := results[0].NsPerOp, results[0].NsPerOp
-	
+
 	for _, result := range results {
 		totalNsPerOp += result.NsPerOp
 		totalAllocs += float64(result.AllocsPerOp)
 		totalBytes += float64(result.BytesPerOp)
-		
+
 		if result.NsPerOp < fastestNs {
 			fastestNs = result.NsPerOp
 		}
@@ -212,10 +212,10 @@ func (pr *PerformanceRunner) generateSummaryStats(results []BenchmarkResult) map
 			slowestNs = result.NsPerOp
 		}
 	}
-	
+
 	count := float64(len(results))
 	return map[string]interface{}{
-		"average_ns_per_op":    totalNsPerOp / count,
+		"average_ns_per_op":     totalNsPerOp / count,
 		"average_allocs_per_op": totalAllocs / count,
 		"average_bytes_per_op":  totalBytes / count,
 		"fastest_ns_per_op":     fastestNs,
@@ -228,12 +228,12 @@ func (pr *PerformanceRunner) generateSummaryStats(results []BenchmarkResult) map
 func (pr *PerformanceRunner) saveResults(summary *BenchmarkSummary) error {
 	filename := fmt.Sprintf("benchmark_%s.json", summary.Timestamp.Format("20060102_150405"))
 	filepath := filepath.Join(pr.outputDir, filename)
-	
+
 	data, err := json.MarshalIndent(summary, "", "  ")
 	if err != nil {
 		return err
 	}
-	
+
 	return os.WriteFile(filepath, data, 0600)
 }
 
@@ -243,7 +243,7 @@ func (pr *PerformanceRunner) SaveBaseline(summary *BenchmarkSummary) error {
 	if err != nil {
 		return err
 	}
-	
+
 	return os.WriteFile(pr.baselineFile, data, 0600)
 }
 
@@ -253,7 +253,7 @@ func (pr *PerformanceRunner) loadBaseline() (*BenchmarkSummary, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var summary BenchmarkSummary
 	err = json.Unmarshal(data, &summary)
 	return &summary, err
@@ -262,28 +262,28 @@ func (pr *PerformanceRunner) loadBaseline() (*BenchmarkSummary, error) {
 // compareResults compares current results with baseline
 func (pr *PerformanceRunner) compareResults(baseline, current *BenchmarkSummary) *RegressionReport {
 	report := &RegressionReport{
-		Regressions:   []RegressionDetail{},
-		Improvements:  []RegressionDetail{},
+		Regressions:    []RegressionDetail{},
+		Improvements:   []RegressionDetail{},
 		OverallSummary: make(map[string]interface{}),
 	}
-	
+
 	// Create lookup map for baseline results
 	baselineMap := make(map[string]BenchmarkResult)
 	for _, result := range baseline.Results {
 		baselineMap[result.Name] = result
 	}
-	
+
 	var totalRegressions, totalImprovements int
-	
+
 	for _, currentResult := range current.Results {
 		baselineResult, exists := baselineMap[currentResult.Name]
 		if !exists {
 			continue // New benchmark, skip comparison
 		}
-		
+
 		// Compare ns/op (primary metric)
 		changePercent := ((currentResult.NsPerOp - baselineResult.NsPerOp) / baselineResult.NsPerOp) * 100
-		
+
 		detail := RegressionDetail{
 			BenchmarkName: currentResult.Name,
 			Metric:        "ns/op",
@@ -291,7 +291,7 @@ func (pr *PerformanceRunner) compareResults(baseline, current *BenchmarkSummary)
 			CurrentValue:  currentResult.NsPerOp,
 			ChangePercent: changePercent,
 		}
-		
+
 		if changePercent > pr.regressionThreshold {
 			// Performance regression
 			detail.Severity = pr.calculateSeverity(changePercent)
@@ -304,26 +304,26 @@ func (pr *PerformanceRunner) compareResults(baseline, current *BenchmarkSummary)
 			totalImprovements++
 		}
 	}
-	
+
 	report.HasRegression = len(report.Regressions) > 0
-	
+
 	if report.HasRegression {
-		report.Message = fmt.Sprintf("Found %d performance regressions and %d improvements", 
+		report.Message = fmt.Sprintf("Found %d performance regressions and %d improvements",
 			totalRegressions, totalImprovements)
 	} else if totalImprovements > 0 {
-		report.Message = fmt.Sprintf("Found %d performance improvements, no regressions", 
+		report.Message = fmt.Sprintf("Found %d performance improvements, no regressions",
 			totalImprovements)
 	} else {
 		report.Message = "No significant performance changes detected"
 	}
-	
+
 	report.OverallSummary = map[string]interface{}{
 		"total_regressions":  totalRegressions,
 		"total_improvements": totalImprovements,
 		"baseline_timestamp": baseline.Timestamp,
 		"current_timestamp":  current.Timestamp,
 	}
-	
+
 	return report
 }
 
@@ -360,54 +360,54 @@ func (pr *PerformanceRunner) getGitBranch() (string, error) {
 // GenerateReport generates a human-readable performance report
 func (pr *PerformanceRunner) GenerateReport(summary *BenchmarkSummary, regression *RegressionReport) string {
 	var report strings.Builder
-	
+
 	report.WriteString("# MCP SDK Performance Report\n\n")
 	report.WriteString(fmt.Sprintf("**Generated:** %s\n", summary.Timestamp.Format(time.RFC3339)))
 	report.WriteString(fmt.Sprintf("**Git Commit:** %s\n", summary.GitCommit))
 	report.WriteString(fmt.Sprintf("**Git Branch:** %s\n\n", summary.GitBranch))
-	
+
 	report.WriteString("## Summary\n\n")
 	report.WriteString(fmt.Sprintf("- **Total Benchmarks:** %d\n", summary.TotalBenchmarks))
-	
+
 	if summaryStats, ok := summary.Summary["average_ns_per_op"].(float64); ok {
 		report.WriteString(fmt.Sprintf("- **Average Performance:** %.2f ns/op\n", summaryStats))
 	}
-	
+
 	if regression != nil {
 		report.WriteString(fmt.Sprintf("- **Regression Status:** %s\n", regression.Message))
 		report.WriteString(fmt.Sprintf("- **Regressions Found:** %d\n", len(regression.Regressions)))
 		report.WriteString(fmt.Sprintf("- **Improvements Found:** %d\n\n", len(regression.Improvements)))
-		
+
 		if len(regression.Regressions) > 0 {
 			report.WriteString("## Performance Regressions\n\n")
 			for _, reg := range regression.Regressions {
-				report.WriteString(fmt.Sprintf("- **%s** (%s): %.2f%% slower (%.2f → %.2f ns/op)\n", 
-					reg.BenchmarkName, reg.Severity, reg.ChangePercent, 
+				report.WriteString(fmt.Sprintf("- **%s** (%s): %.2f%% slower (%.2f → %.2f ns/op)\n",
+					reg.BenchmarkName, reg.Severity, reg.ChangePercent,
 					reg.BaselineValue, reg.CurrentValue))
 			}
 			report.WriteString("\n")
 		}
-		
+
 		if len(regression.Improvements) > 0 {
 			report.WriteString("## Performance Improvements\n\n")
 			for _, imp := range regression.Improvements {
-				report.WriteString(fmt.Sprintf("- **%s**: %.2f%% faster (%.2f → %.2f ns/op)\n", 
-					imp.BenchmarkName, -imp.ChangePercent, 
+				report.WriteString(fmt.Sprintf("- **%s**: %.2f%% faster (%.2f → %.2f ns/op)\n",
+					imp.BenchmarkName, -imp.ChangePercent,
 					imp.BaselineValue, imp.CurrentValue))
 			}
 			report.WriteString("\n")
 		}
 	}
-	
+
 	report.WriteString("## Detailed Results\n\n")
 	report.WriteString("| Benchmark | Iterations | ns/op | Allocs/op | Bytes/op |\n")
 	report.WriteString("|-----------|------------|-------|-----------|----------|\n")
-	
+
 	for _, result := range summary.Results {
 		report.WriteString(fmt.Sprintf("| %s | %d | %.2f | %d | %d |\n",
 			result.Name, result.Iterations, result.NsPerOp,
 			result.AllocsPerOp, result.BytesPerOp))
 	}
-	
+
 	return report.String()
 }

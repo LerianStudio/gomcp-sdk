@@ -24,6 +24,14 @@ func (v APIVersion) String() string {
 	return fmt.Sprintf("v%d.%d.%d", v.Major, v.Minor, v.Patch)
 }
 
+// contextKey is a custom type for context keys to avoid collisions
+type contextKey string
+
+// Context keys
+const (
+	apiVersionKey contextKey = "api_version"
+)
+
 // Short returns the short version string (vMajor.Minor)
 func (v APIVersion) Short() string {
 	return fmt.Sprintf("v%d.%d", v.Major, v.Minor)
@@ -306,7 +314,7 @@ func (vm *VersionManager) CreateVersioningMiddleware() func(http.Handler) http.H
 			}
 
 			// Set version in context
-			ctx := context.WithValue(r.Context(), "api_version", version)
+			ctx := context.WithValue(r.Context(), apiVersionKey, version)
 			r = r.WithContext(ctx)
 
 			// Set response headers
@@ -320,7 +328,7 @@ func (vm *VersionManager) CreateVersioningMiddleware() func(http.Handler) http.H
 
 // GetVersionFromContext extracts API version from context
 func GetVersionFromContext(ctx context.Context) (APIVersion, bool) {
-	version, ok := ctx.Value("api_version").(APIVersion)
+	version, ok := ctx.Value(apiVersionKey).(APIVersion)
 	return version, ok
 }
 
@@ -382,7 +390,7 @@ func (vr *VersionRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	vr.versionManager.SetVersionHeaders(w, version)
 
 	// Set version in context
-	ctx := context.WithValue(r.Context(), "api_version", version)
+	ctx := context.WithValue(r.Context(), apiVersionKey, version)
 	r = r.WithContext(ctx)
 
 	// Serve request
@@ -487,7 +495,7 @@ func (jv *JSONRPCVersioning) WrapHandler(next func(ctx context.Context, req *pro
 					}
 
 					// Set version in context
-					ctx = context.WithValue(ctx, "api_version", version)
+					ctx = context.WithValue(ctx, apiVersionKey, version)
 				}
 			}
 		}

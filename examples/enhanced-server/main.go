@@ -8,11 +8,13 @@
 // - Comprehensive contract testing support
 //
 // To run this example:
-//   go run examples/enhanced-server/main.go
+//
+//	go run examples/enhanced-server/main.go
 //
 // Test endpoints:
-//   HTTP: curl -H "API-Version: v1.0" http://localhost:8080/api/v1/tools
-//   WebSocket: ws://localhost:8081/ws
+//
+//	HTTP: curl -H "API-Version: v1.0" http://localhost:8080/api/v1/tools
+//	WebSocket: ws://localhost:8081/ws
 package main
 
 import (
@@ -269,16 +271,16 @@ func createErrorHandlingConfig() *middleware.ErrorHandlingConfig {
 		return &middleware.ErrorHandlingConfig{
 			IncludeStackTrace: true,
 			IncludeDebugInfo:  true,
-			LogErrors:        true,
-			ErrorTransformer: middleware.DevelopmentErrorTransformer,
+			LogErrors:         true,
+			ErrorTransformer:  middleware.DevelopmentErrorTransformer,
 		}
 	}
 
 	return &middleware.ErrorHandlingConfig{
 		IncludeStackTrace: false,
 		IncludeDebugInfo:  false,
-		LogErrors:        true,
-		ErrorTransformer: middleware.ProductionErrorTransformer,
+		LogErrors:         true,
+		ErrorTransformer:  middleware.ProductionErrorTransformer,
 	}
 }
 
@@ -319,9 +321,9 @@ func createVersionManager() *versioning.VersionManager {
 }
 
 // startHTTPTransport starts the HTTP transport with all enhancements
-func startHTTPTransport(srv *server.Server, errorConfig *middleware.ErrorHandlingConfig, 
+func startHTTPTransport(srv *server.Server, errorConfig *middleware.ErrorHandlingConfig,
 	poolConfig *transport.ConnectionPoolConfig, versionManager *versioning.VersionManager) string {
-	
+
 	// Configure HTTP transport
 	httpConfig := &transport.HTTPConfig{
 		Address:        ":8080",
@@ -348,7 +350,7 @@ func startHTTPTransport(srv *server.Server, errorConfig *middleware.ErrorHandlin
 
 	// Start transports
 	ctx := context.Background()
-	
+
 	go func() {
 		if err := httpTransport.Start(ctx, srv); err != nil {
 			log.Printf("HTTP transport error: %v", err)

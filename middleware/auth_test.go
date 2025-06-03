@@ -12,7 +12,7 @@ import (
 
 // Test context key constants
 const (
-	testAuthHeaderKey testContextKey = "Authorization"
+	testAuthHeaderKey   testContextKey = "Authorization"
 	testAPIKeyHeaderKey testContextKey = "X-API-Key"
 )
 

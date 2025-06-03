@@ -323,7 +323,7 @@ func (m *AuthMiddleware) extractAPIKey(ctx context.Context) string {
 			return keyStr
 		}
 	}
-	
+
 	// Also check for test context key
 	if apiKey := ctx.Value(testContextKey(m.config.APIKeyHeader)); apiKey != nil {
 		if keyStr, ok := apiKey.(string); ok {

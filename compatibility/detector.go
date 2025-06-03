@@ -139,11 +139,11 @@ func (d *Detector) hasCapabilitySignature(caps protocol.ClientCapabilities, feat
 	for _, feature := range features {
 		switch feature {
 		case "sampling":
-			if caps.Sampling != nil && len(caps.Sampling) > 0 {
+			if len(caps.Sampling) > 0 {
 				return true
 			}
 		case "experimental":
-			if caps.Experimental != nil && len(caps.Experimental) > 0 {
+			if len(caps.Experimental) > 0 {
 				return true
 			}
 		}

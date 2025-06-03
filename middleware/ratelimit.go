@@ -458,13 +458,13 @@ func (m *RateLimitMiddleware) extractIPFromContext(ctx context.Context) string {
 			return ipStr
 		}
 	}
-	
+
 	// Try test context key type
 	if ip := ctx.Value(testRemoteAddrKey("RemoteAddr")); ip != nil {
 		if ipStr, ok := ip.(string); ok && ipStr != "" {
 			return ipStr
 		}
 	}
-	
+
 	return ""
 }

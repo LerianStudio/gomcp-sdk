@@ -1373,8 +1373,8 @@ func TestEdgeCases(t *testing.T) {
 		transport := &mockTransport{}
 		server.SetTransport(transport)
 		if err := server.Start(context.Background()); err != nil {
-		t.Fatalf("Failed to start server: %v", err)
-	}
+			t.Fatalf("Failed to start server: %v", err)
+		}
 
 		// Add a slow tool
 		tool := protocol.Tool{Name: "slow_tool"}

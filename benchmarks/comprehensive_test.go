@@ -27,10 +27,10 @@ type BenchmarkSuite struct {
 // NewBenchmarkSuite creates a new benchmark suite
 func NewBenchmarkSuite() *BenchmarkSuite {
 	srv := server.NewServer("benchmark-server", "1.0.0")
-	
+
 	// Add test tools with various complexities
 	addBenchmarkTools(srv)
-	
+
 	return &BenchmarkSuite{
 		server: srv,
 	}
@@ -118,7 +118,7 @@ func BenchmarkProtocolJSONRPC(b *testing.B) {
 
 	b.Run("ParseRequest", func(b *testing.B) {
 		data := []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"echo","arguments":{"message":"test"}}}`)
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -131,7 +131,7 @@ func BenchmarkProtocolJSONRPC(b *testing.B) {
 
 	b.Run("CreateResponse", func(b *testing.B) {
 		result := protocol.NewToolCallResult(protocol.NewContent("test response"))
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -155,7 +155,7 @@ func BenchmarkProtocolJSONRPC(b *testing.B) {
 			[]byte(`{"jsonrpc":"2.0","method":"notification"}`),
 			[]byte(`{"jsonrpc":"2.0","id":null,"method":"null-id"}`),
 		}
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -265,7 +265,7 @@ func BenchmarkTransportHTTP(b *testing.B) {
 
 	b.Run("SimpleRequest", func(b *testing.B) {
 		reqBody := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"echo","arguments":{"message":"test"}}}`
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -279,7 +279,7 @@ func BenchmarkTransportHTTP(b *testing.B) {
 
 	b.Run("ConcurrentRequests", func(b *testing.B) {
 		reqBody := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"echo","arguments":{"message":"concurrent"}}}`
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		b.RunParallel(func(pb *testing.PB) {
@@ -320,7 +320,7 @@ func BenchmarkTransportWebSocket(b *testing.B) {
 		defer conn.Close()
 
 		reqData := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"echo","arguments":{"message":"ws-test"}}}`
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
@@ -328,7 +328,7 @@ func BenchmarkTransportWebSocket(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			
+
 			_, _, err = conn.ReadMessage()
 			if err != nil {
 				b.Fatal(err)
@@ -338,7 +338,7 @@ func BenchmarkTransportWebSocket(b *testing.B) {
 
 	b.Run("MultipleConnections", func(b *testing.B) {
 		const numConns = 10
-		
+
 		b.ReportAllocs()
 		b.ResetTimer()
 		b.RunParallel(func(pb *testing.PB) {
@@ -349,13 +349,13 @@ func BenchmarkTransportWebSocket(b *testing.B) {
 			defer conn.Close()
 
 			reqData := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"echo","arguments":{"message":"parallel"}}}`
-			
+
 			for pb.Next() {
 				err := conn.WriteMessage(websocket.TextMessage, []byte(reqData))
 				if err != nil {
 					b.Fatal(err)
 				}
-				
+
 				_, _, err = conn.ReadMessage()
 				if err != nil {
 					b.Fatal(err)
@@ -411,7 +411,7 @@ func BenchmarkScalability(b *testing.B) {
 	suite := NewBenchmarkSuite()
 
 	scales := []int{1, 10, 100, 1000}
-	
+
 	for _, scale := range scales {
 		b.Run(fmt.Sprintf("Concurrent_%d", scale), func(b *testing.B) {
 			req := &protocol.JSONRPCRequest{
@@ -449,10 +449,10 @@ func BenchmarkThroughput(b *testing.B) {
 		}
 
 		var operations int64
-		
+
 		start := time.Now()
 		b.ResetTimer()
-		
+
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
 				resp := suite.server.HandleRequest(context.Background(), req)
@@ -462,7 +462,7 @@ func BenchmarkThroughput(b *testing.B) {
 				atomic.AddInt64(&operations, 1)
 			}
 		})
-		
+
 		duration := time.Since(start)
 		rps := float64(operations) / duration.Seconds()
 		b.ReportMetric(rps, "requests/sec")
@@ -472,7 +472,7 @@ func BenchmarkThroughput(b *testing.B) {
 // Latency Benchmarks
 func BenchmarkLatency(b *testing.B) {
 	suite := NewBenchmarkSuite()
-	
+
 	scenarios := []struct {
 		name   string
 		params string
@@ -492,20 +492,20 @@ func BenchmarkLatency(b *testing.B) {
 			}
 
 			var totalDuration time.Duration
-			
+
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				start := time.Now()
 				resp := suite.server.HandleRequest(context.Background(), req)
 				duration := time.Since(start)
-				
+
 				if resp.Error != nil {
 					b.Fatal(resp.Error)
 				}
-				
+
 				totalDuration += duration
 			}
-			
+
 			avgLatency := totalDuration / time.Duration(b.N)
 			b.ReportMetric(float64(avgLatency.Nanoseconds()), "ns/op")
 		})
@@ -524,8 +524,8 @@ func BenchmarkRegression(b *testing.B) {
 	// Define baselines for regression testing
 	baselines := map[string]PerformanceBaseline{
 		"echo": {
-			OperationsPerSecond: 10000,  // Minimum expected ops/sec
-			MemoryPerOperation:  1024,   // Maximum expected memory per op
+			OperationsPerSecond: 10000,                  // Minimum expected ops/sec
+			MemoryPerOperation:  1024,                   // Maximum expected memory per op
 			AverageLatency:      time.Microsecond * 100, // Maximum expected latency
 		},
 	}
@@ -544,10 +544,10 @@ func BenchmarkRegression(b *testing.B) {
 			// Measure performance
 			start := time.Now()
 			var operations int64
-			
+
 			b.ResetTimer()
 			b.ReportAllocs()
-			
+
 			for i := 0; i < b.N; i++ {
 				resp := suite.server.HandleRequest(context.Background(), req)
 				if resp.Error != nil {
@@ -555,25 +555,25 @@ func BenchmarkRegression(b *testing.B) {
 				}
 				atomic.AddInt64(&operations, 1)
 			}
-			
+
 			duration := time.Since(start)
-			
+
 			// Calculate metrics
 			opsPerSec := float64(operations) / duration.Seconds()
 			avgLatency := duration / time.Duration(b.N)
-			
+
 			// Report custom metrics
 			b.ReportMetric(opsPerSec, "ops/sec")
 			b.ReportMetric(float64(avgLatency.Nanoseconds()), "avg_latency_ns")
-			
+
 			// Regression checks (would normally fail the test if not met)
 			if opsPerSec < baseline.OperationsPerSecond {
-				b.Logf("WARNING: Performance regression detected. Expected >= %.0f ops/sec, got %.0f", 
+				b.Logf("WARNING: Performance regression detected. Expected >= %.0f ops/sec, got %.0f",
 					baseline.OperationsPerSecond, opsPerSec)
 			}
-			
+
 			if avgLatency > baseline.AverageLatency {
-				b.Logf("WARNING: Latency regression detected. Expected <= %v, got %v", 
+				b.Logf("WARNING: Latency regression detected. Expected <= %v, got %v",
 					baseline.AverageLatency, avgLatency)
 			}
 		})

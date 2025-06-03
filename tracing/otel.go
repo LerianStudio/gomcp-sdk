@@ -121,14 +121,14 @@ func NewTracer(ctx context.Context, config Config) (*Tracer, func(context.Contex
 
 	// Create span processor (enhanced or standard based on config)
 	batchProcessor := sdktrace.NewBatchSpanProcessor(exporter)
-	var spanProcessor sdktrace.SpanProcessor = batchProcessor
+	spanProcessor := batchProcessor
 
 	if config.EnableEnhancedTracing {
 		spanProcessor = NewEnhancedSpanProcessor(batchProcessor)
 	}
 
 	// Configure sampler based on sampling ratio
-	var sampler sdktrace.Sampler = sdktrace.AlwaysSample()
+	sampler := sdktrace.AlwaysSample()
 	if config.SamplingRatio > 0 && config.SamplingRatio < 1.0 {
 		sampler = sdktrace.TraceIDRatioBased(config.SamplingRatio)
 	} else if config.SamplingRatio == 0 {

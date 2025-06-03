@@ -24,7 +24,6 @@ type ContractTestSuite struct {
 	httpURL   string
 	wsURL     string
 	httpTest  *httptest.Server
-	transport transport.Transport
 	wsCleanup func()
 }
 
