@@ -5,11 +5,13 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/LerianStudio/gomcp-sdk/protocol"
 	"io"
 	"os"
 	"sync"
+
+	"github.com/LerianStudio/gomcp-sdk/protocol"
 )
 
 // StdioTransport implements the Transport interface using stdio
@@ -47,7 +49,7 @@ func (t *StdioTransport) Start(ctx context.Context, handler RequestHandler) erro
 	t.mutex.Lock()
 	if t.running {
 		t.mutex.Unlock()
-		return fmt.Errorf("transport already running")
+		return errors.New("transport already running")
 	}
 	t.running = true
 	t.mutex.Unlock()

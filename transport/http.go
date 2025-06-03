@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -242,7 +243,7 @@ func (t *HTTPTransport) Start(ctx context.Context, handler RequestHandler) error
 	defer t.mu.Unlock()
 
 	if t.running {
-		return fmt.Errorf("transport already running")
+		return errors.New("transport already running")
 	}
 
 	t.handler = handler
@@ -712,11 +713,6 @@ func isValidJSONContentType(contentType string) bool {
 
 // NewConnectionPoolMonitor creates a new connection pool monitor
 func NewConnectionPoolMonitor(transport *http.Transport, config *ConnectionPoolConfig) *ConnectionPoolMonitor {
-	interval := config.MetricsInterval
-	if interval == 0 {
-		interval = 30 * time.Second // Default monitoring interval
-	}
-
 	return &ConnectionPoolMonitor{
 		transport: transport,
 		config:    config,

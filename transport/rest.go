@@ -4,10 +4,12 @@ package transport
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -70,7 +72,7 @@ func (t *RESTTransport) Start(ctx context.Context, handler RequestHandler) error
 	defer t.mu.Unlock()
 
 	if t.running {
-		return fmt.Errorf("transport already running")
+		return errors.New("transport already running")
 	}
 
 	t.handler = handler
@@ -697,5 +699,5 @@ func (t *RESTTransport) ServeHTTP(w http.ResponseWriter, r *http.Request, handle
 }
 
 func generateID() string {
-	return fmt.Sprintf("%d", time.Now().UnixNano())
+	return strconv.FormatInt(time.Now().UnixNano(), 10)
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -153,7 +154,7 @@ func (t *WebSocketTransport) Start(ctx context.Context, handler RequestHandler) 
 	defer t.mu.Unlock()
 
 	if t.running {
-		return fmt.Errorf("transport already running")
+		return errors.New("transport already running")
 	}
 
 	t.handler = handler
@@ -380,6 +381,7 @@ func (t *WebSocketTransport) sendCloseMessages() {
 			closeMessage := websocket.FormatCloseMessage(websocket.CloseGoingAway, "Server shutting down")
 			if err := c.WriteMessage(websocket.CloseMessage, closeMessage); err != nil {
 				// Ignore errors, connection might already be closed
+				_ = err
 			}
 		}(conn)
 	}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/LerianStudio/gomcp-sdk/correlation"
 	"github.com/LerianStudio/gomcp-sdk/protocol"
 	"github.com/LerianStudio/gomcp-sdk/shutdown"
 )
@@ -111,7 +113,7 @@ func (t *SSETransport) Start(ctx context.Context, handler RequestHandler) error 
 	defer t.mu.Unlock()
 
 	if t.running {
-		return fmt.Errorf("transport already running")
+		return errors.New("transport already running")
 	}
 
 	t.handler = handler
@@ -639,7 +641,7 @@ func (t *SSETransport) SendToClient(clientID string, eventType string, data inte
 	case client.events <- event:
 		return nil
 	default:
-		return fmt.Errorf("client buffer full")
+		return errors.New("client buffer full")
 	}
 }
 
@@ -718,4 +720,31 @@ func (t *SSETransport) GetClients() []string {
 		clients = append(clients, id)
 	}
 	return clients
+}
+
+// wrapWithMiddleware wraps the handler with SSE-compatible middleware
+// This overrides HTTPTransport's method to ensure middleware doesn't break SSE
+func (t *SSETransport) wrapWithMiddleware(handler http.Handler) http.Handler {
+	// Only apply middleware that preserve the http.Flusher interface
+	// Skip error handling and recovery middleware that might wrap the response writer
+	
+	// Correlation middleware (safe for SSE)
+	if t.config.EnableCorrelation {
+		handler = correlation.CorrelationMiddleware()(handler)
+	}
+
+	// Tracing middleware (safe for SSE)
+	if t.tracingMiddleware != nil {
+		handler = t.tracingMiddleware.HTTPMiddleware()(handler)
+	}
+
+	// CORS middleware (safe for SSE)
+	if t.config.EnableCORS {
+		handler = t.corsMiddleware(handler)
+	}
+
+	// Skip recovery and error handling middleware for SSE
+	// as they can wrap the response writer and break the Flusher interface
+
+	return handler
 }

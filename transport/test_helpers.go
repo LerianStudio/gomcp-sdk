@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"math/big"
 	"net"
@@ -46,7 +47,7 @@ func ParseSSEEvent(raw string) (*SSEEvent, error) {
 	}
 
 	if event.Data == "" && event.Event == "" {
-		return nil, fmt.Errorf("invalid SSE event: no data or event type")
+		return nil, errors.New("invalid SSE event: no data or event type")
 	}
 
 	return event, nil
@@ -328,7 +329,7 @@ func CreateTLSConfig(caCertPEM, certPEM, keyPEM []byte, clientAuth tls.ClientAut
 	if caCertPEM != nil {
 		caCertPool := x509.NewCertPool()
 		if !caCertPool.AppendCertsFromPEM(caCertPEM) {
-			return nil, fmt.Errorf("failed to add CA certificate to pool")
+			return nil, errors.New("failed to add CA certificate to pool")
 		}
 		tlsConfig.RootCAs = caCertPool
 		tlsConfig.ClientCAs = caCertPool
