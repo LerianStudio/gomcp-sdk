@@ -111,7 +111,8 @@ func TestMiddlewarePipeline(t *testing.T) {
 	t.Run("context propagation", func(t *testing.T) {
 		pipeline := NewPipeline(logger)
 
-		key := "test-key"
+		type testKey string
+		key := testKey("test-key")
 		value := "test-value"
 
 		middleware := MiddlewareFunc(func(ctx context.Context, req interface{}, next Handler) (interface{}, error) {

@@ -107,10 +107,8 @@ func (p *OpenAIProvider) convertMessages(req *Request) []openAIMessage {
 
 	// Convert messages
 	for _, msg := range req.Messages {
-		messages = append(messages, openAIMessage{
-			Role:    msg.Role,
-			Content: msg.Content,
-		})
+		convertedMsg := openAIMessage(msg)
+		messages = append(messages, convertedMsg)
 	}
 
 	return messages

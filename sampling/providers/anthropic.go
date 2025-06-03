@@ -110,10 +110,8 @@ func (p *AnthropicProvider) convertMessages(req *Request) []anthropicMessage {
 			continue
 		}
 
-		messages = append(messages, anthropicMessage{
-			Role:    msg.Role,
-			Content: msg.Content,
-		})
+		convertedMsg := anthropicMessage(msg)
+		messages = append(messages, convertedMsg)
 	}
 
 	return messages
@@ -152,9 +150,9 @@ func (p *AnthropicProvider) doRequest(ctx context.Context, reqBody []byte) (*Res
 	if httpResp.StatusCode != http.StatusOK {
 		var errorResp anthropicErrorResponse
 		if err := json.Unmarshal(respBody, &errorResp); err == nil && errorResp.Error.Message != "" {
-			return nil, fmt.Errorf("Anthropic API error (status %d): %s", httpResp.StatusCode, errorResp.Error.Message)
+			return nil, fmt.Errorf("anthropic API error (status %d): %s", httpResp.StatusCode, errorResp.Error.Message)
 		}
-		return nil, fmt.Errorf("Anthropic API error: status %d: %s", httpResp.StatusCode, string(respBody))
+		return nil, fmt.Errorf("anthropic API error: status %d: %s", httpResp.StatusCode, string(respBody))
 	}
 
 	// Parse response

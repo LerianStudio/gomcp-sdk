@@ -11,6 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Use the same type as defined in ratelimit.go to avoid redeclaration
+const testRemoteAddrKeyConst = "RemoteAddr"
+
 func TestTokenBucket(t *testing.T) {
 	t.Run("basic allow", func(t *testing.T) {
 		tb := NewTokenBucket(10, 5) // 10 tokens/sec, burst of 5
@@ -202,8 +205,8 @@ func TestRateLimitMiddleware(t *testing.T) {
 		}
 
 		// Create contexts for different IPs
-		ip1Ctx := context.WithValue(context.Background(), "RemoteAddr", "192.168.1.1")
-		ip2Ctx := context.WithValue(context.Background(), "RemoteAddr", "192.168.1.2")
+		ip1Ctx := context.WithValue(context.Background(), testRemoteAddrKey(testRemoteAddrKeyConst), "192.168.1.1")
+		ip2Ctx := context.WithValue(context.Background(), testRemoteAddrKey(testRemoteAddrKeyConst), "192.168.1.2")
 
 		// Each IP should have their own limit
 		for i := 0; i < 2; i++ {
@@ -242,7 +245,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 
 		// Create context with both user and IP
 		ctx := context.WithValue(context.Background(), ContextKeyUser, &User{ID: "user1"})
-		ctx = context.WithValue(ctx, "RemoteAddr", "192.168.1.1")
+		ctx = context.WithValue(ctx, testRemoteAddrKey(testRemoteAddrKeyConst), "192.168.1.1")
 
 		// Should create a combined identifier
 		for i := 0; i < 2; i++ {

@@ -522,11 +522,11 @@ func NewAdaptiveWorkerPool(handler RequestHandler, opts *AdaptiveOptions) *Adapt
 	if opts.MaxWorkers < opts.MinWorkers {
 		opts.MaxWorkers = opts.MinWorkers * 2
 	}
-	if opts.ConcurrentOptions.NumWorkers < opts.MinWorkers {
-		opts.ConcurrentOptions.NumWorkers = opts.MinWorkers
+	if opts.NumWorkers < opts.MinWorkers {
+		opts.NumWorkers = opts.MinWorkers
 	}
-	if opts.ConcurrentOptions.NumWorkers > opts.MaxWorkers {
-		opts.ConcurrentOptions.NumWorkers = opts.MaxWorkers
+	if opts.NumWorkers > opts.MaxWorkers {
+		opts.NumWorkers = opts.MaxWorkers
 	}
 
 	// Create base concurrent handler
@@ -541,7 +541,7 @@ func NewAdaptiveWorkerPool(handler RequestHandler, opts *AdaptiveOptions) *Adapt
 		scaleUpThreshold:   opts.ScaleUpThreshold,
 		scaleDownThreshold: opts.ScaleDownThreshold,
 		scalingInterval:    opts.ScalingInterval,
-		currentWorkers:     int64(opts.ConcurrentOptions.NumWorkers),
+		currentWorkers:     int64(opts.NumWorkers),
 		lastScaleTime:      time.Now(),
 		utilizationHistory: make([]float64, 0, 10),
 		historySize:        10,
@@ -723,7 +723,7 @@ func (awp *AdaptiveWorkerPool) GetWorkerPoolStats() map[string]interface{} {
 	}
 
 	// Add base metrics
-	baseMetrics := awp.ConcurrentHandler.Metrics()
+	baseMetrics := awp.Metrics()
 	for k, v := range baseMetrics {
 		stats[k] = v
 	}

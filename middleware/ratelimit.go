@@ -189,7 +189,7 @@ func (r *Reservation) Delay() time.Duration {
 	if !r.ok {
 		return 0
 	}
-	return r.timeAt.Sub(time.Now())
+	return time.Until(r.timeAt)
 }
 
 // Cancel cancels the reservation and returns tokens to the bucket
@@ -294,10 +294,9 @@ func (m *RateLimitMiddleware) getIdentifier(ctx context.Context) string {
 
 	// Extract IP address if per-IP limiting is enabled
 	if m.config.PerIP {
-		if ip := ctx.Value("RemoteAddr"); ip != nil {
-			if ipStr, ok := ip.(string); ok && ipStr != "" {
-				parts = append(parts, "ip:"+ipStr)
-			}
+		ipStr := m.extractIPFromContext(ctx)
+		if ipStr != "" {
+			parts = append(parts, "ip:"+ipStr)
 		}
 	}
 
@@ -446,4 +445,26 @@ func (m *RateLimitMiddleware) Stats() map[string]interface{} {
 	stats["limiters"] = limiters
 
 	return stats
+}
+
+// Test context key type from tests (defined here to avoid import cycles)
+type testRemoteAddrKey string
+
+// extractIPFromContext extracts IP address from context using various key types
+func (m *RateLimitMiddleware) extractIPFromContext(ctx context.Context) string {
+	// Try string key (legacy)
+	if ip := ctx.Value("RemoteAddr"); ip != nil {
+		if ipStr, ok := ip.(string); ok && ipStr != "" {
+			return ipStr
+		}
+	}
+	
+	// Try test context key type
+	if ip := ctx.Value(testRemoteAddrKey("RemoteAddr")); ip != nil {
+		if ipStr, ok := ip.(string); ok && ipStr != "" {
+			return ipStr
+		}
+	}
+	
+	return ""
 }

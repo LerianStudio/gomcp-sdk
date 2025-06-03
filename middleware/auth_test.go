@@ -10,6 +10,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Test context key constants
+const (
+	testAuthHeaderKey testContextKey = "Authorization"
+	testAPIKeyHeaderKey testContextKey = "X-API-Key"
+)
+
 func TestAuthMiddleware(t *testing.T) {
 	config := &AuthConfig{
 		JWTSecret:     "test-secret",
@@ -55,7 +61,7 @@ func TestAuthMiddleware(t *testing.T) {
 		require.NoError(t, err)
 
 		// Add token to context
-		ctx := context.WithValue(context.Background(), "Authorization", "Bearer "+token)
+		ctx := context.WithValue(context.Background(), testAuthHeaderKey, "Bearer "+token)
 
 		var capturedUser *User
 		handler := func(ctx context.Context, req interface{}) (interface{}, error) {
@@ -78,7 +84,7 @@ func TestAuthMiddleware(t *testing.T) {
 	t.Run("invalid JWT token", func(t *testing.T) {
 		middleware := NewAuthMiddleware(config)
 
-		ctx := context.WithValue(context.Background(), "Authorization", "Bearer invalid-token")
+		ctx := context.WithValue(context.Background(), testAuthHeaderKey, "Bearer invalid-token")
 
 		handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 			t.Fatal("handler should not be called")
@@ -104,7 +110,7 @@ func TestAuthMiddleware(t *testing.T) {
 		tokenString, err := token.SignedString([]byte(config.JWTSecret))
 		require.NoError(t, err)
 
-		ctx := context.WithValue(context.Background(), "Authorization", "Bearer "+tokenString)
+		ctx := context.WithValue(context.Background(), testAuthHeaderKey, "Bearer "+tokenString)
 
 		handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 			t.Fatal("handler should not be called")
@@ -119,7 +125,7 @@ func TestAuthMiddleware(t *testing.T) {
 	t.Run("valid API key authentication", func(t *testing.T) {
 		middleware := NewAuthMiddleware(config)
 
-		ctx := context.WithValue(context.Background(), "X-API-Key", "test-api-key")
+		ctx := context.WithValue(context.Background(), testAPIKeyHeaderKey, "test-api-key")
 
 		var capturedUser *User
 		var capturedMethod AuthMethod
@@ -144,7 +150,7 @@ func TestAuthMiddleware(t *testing.T) {
 	t.Run("invalid API key", func(t *testing.T) {
 		middleware := NewAuthMiddleware(config)
 
-		ctx := context.WithValue(context.Background(), "X-API-Key", "invalid-key")
+		ctx := context.WithValue(context.Background(), testAPIKeyHeaderKey, "invalid-key")
 
 		handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 			t.Fatal("handler should not be called")
@@ -159,7 +165,7 @@ func TestAuthMiddleware(t *testing.T) {
 	t.Run("API key in Authorization header", func(t *testing.T) {
 		middleware := NewAuthMiddleware(config)
 
-		ctx := context.WithValue(context.Background(), "Authorization", "ApiKey test-api-key")
+		ctx := context.WithValue(context.Background(), testAuthHeaderKey, "ApiKey test-api-key")
 
 		var capturedUser *User
 		handler := func(ctx context.Context, req interface{}) (interface{}, error) {
@@ -205,7 +211,7 @@ func TestAuthMiddleware(t *testing.T) {
 		middleware := NewAuthMiddleware(config)
 
 		// Try API key when only JWT is allowed
-		ctx := context.WithValue(context.Background(), "X-API-Key", "test-api-key")
+		ctx := context.WithValue(context.Background(), testAPIKeyHeaderKey, "test-api-key")
 
 		handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 			t.Fatal("handler should not be called")
@@ -407,7 +413,7 @@ func BenchmarkAuthMiddleware(b *testing.B) {
 	// Generate a valid token
 	user := &User{ID: "user123", Username: "testuser"}
 	token, _ := GenerateJWT(user, config)
-	ctx := context.WithValue(context.Background(), "Authorization", "Bearer "+token)
+	ctx := context.WithValue(context.Background(), testAuthHeaderKey, "Bearer "+token)
 
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return "response", nil
